@@ -1,0 +1,2374 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>DEADZONE // Wave Shooter</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Oswald:wght@700&display=swap');
+  :root {
+    --blood: #c0392b; --blood-dark: #7b0d0d; --gore: #ff3d2e;
+    --green: #39ff14; --dim-green: #1a7a00;
+    --bg: #0a0a0a; --panel: #111; --border: #2a2a2a; --text: #d4d4d4;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    background:var(--bg); color:var(--text);
+    font-family:'Share Tech Mono',monospace;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    min-height:100vh; overflow:hidden;
+  }
+  h1 {
+    font-family:'Oswald',sans-serif; font-size:2.2rem; letter-spacing:.3em;
+    color:var(--gore); text-shadow:0 0 20px #ff0000aa; margin-bottom:6px; text-transform:uppercase;
+  }
+  #subtitle { font-size:.7rem; letter-spacing:.25em; color:var(--dim-green); margin-bottom:12px; }
+  #game-wrapper { display:flex; gap:14px; align-items:flex-start; }
+  canvas {
+    display:block; border:2px solid var(--blood-dark);
+    box-shadow:0 0 30px #ff000033,inset 0 0 30px #00000088;
+    background:#0d1a0d; cursor:crosshair; image-rendering:pixelated;
+  }
+  #hud { width:160px; display:flex; flex-direction:column; gap:10px; font-size:.72rem; }
+  .hud-block { background:var(--panel); border:1px solid var(--border); padding:10px 12px; }
+  .hud-label { color:#555; font-size:.6rem; letter-spacing:.2em; text-transform:uppercase; margin-bottom:3px; }
+  .hud-value { font-size:1.4rem; color:var(--green); font-family:'Oswald',sans-serif; text-shadow:0 0 8px #39ff1466; }
+  .hud-value.red  { color:var(--gore);  text-shadow:0 0 8px #ff3d2e55; }
+  .hud-value.yellow { color:#f1c40f; text-shadow:0 0 8px #f1c40f44; }
+  #health-bar-wrap { background:#1a0000; height:8px; border:1px solid var(--blood-dark); margin-top:5px; }
+  #health-bar { height:100%; background:linear-gradient(90deg,var(--blood-dark),var(--gore)); transition:width .15s; }
+  #ammo-pips { display:flex; flex-wrap:wrap; gap:3px; margin-top:5px; }
+  .pip { width:8px; height:14px; background:var(--gore); box-shadow:0 0 4px #ff3d2e88; }
+  .pip.empty { background:#2a0000; box-shadow:none; }
+  #overlay {
+    position:absolute; top:0; left:0; right:0; bottom:0;
+    background:rgba(0,0,0,.82); display:flex; flex-direction:column;
+    align-items:center; justify-content:center; gap:16px; z-index:10;
+  }
+  #overlay h2 { font-family:'Oswald',sans-serif; font-size:2.8rem; letter-spacing:.2em; color:var(--gore); text-shadow:0 0 30px #ff000099; }
+  #overlay p  { font-size:.8rem; color:#888; letter-spacing:.15em; }
+  #overlay button {
+    background:var(--blood-dark); color:var(--gore); border:2px solid var(--gore);
+    font-family:'Oswald',sans-serif; font-size:1.1rem; letter-spacing:.2em;
+    padding:10px 32px; cursor:pointer; text-transform:uppercase;
+    transition:background .15s,box-shadow .15s;
+  }
+  #overlay button:hover { background:var(--blood); box-shadow:0 0 20px #ff000055; }
+  #controls-hint { font-size:.62rem; color:#444; letter-spacing:.1em; margin-top:8px; text-align:center; }
+  .canvas-wrap { position:relative; }
+  #boss-bar-wrap {
+    position:absolute; bottom:10px; left:50%; transform:translateX(-50%);
+    width:80%; display:none; flex-direction:column; align-items:center; gap:4px;
+  }
+  #boss-name { font-family:'Oswald',sans-serif; font-size:1rem; color:var(--gore); letter-spacing:.2em; text-shadow:0 0 10px #ff000088; }
+  #boss-hp-track { width:100%; height:12px; background:#1a0000; border:1px solid var(--gore); }
+  #boss-hp-bar   { height:100%; background:linear-gradient(90deg,#7b0d0d,#ff3d2e); transition:width .1s; }
+
+  /* PAUSE MENU */
+  #pause-overlay {
+    position:absolute; top:0; left:0; right:0; bottom:0;
+    background:rgba(0,0,0,.88); display:none; flex-direction:column;
+    align-items:center; justify-content:center; gap:0; z-index:20;
+  }
+  #pause-overlay.active { display:flex; }
+  #pause-title {
+    font-family:'Oswald',sans-serif; font-size:2rem; letter-spacing:.3em;
+    color:var(--gore); text-shadow:0 0 20px #ff000088;
+    margin-bottom:20px; text-transform:uppercase;
+  }
+  #pause-tabs {
+    display:flex; gap:0; margin-bottom:0; border-bottom:2px solid var(--border);
+  }
+  .pause-tab {
+    font-family:'Share Tech Mono',monospace; font-size:.7rem; letter-spacing:.15em;
+    color:#555; background:none; border:none; border-bottom:2px solid transparent;
+    padding:8px 18px; cursor:pointer; text-transform:uppercase;
+    transition:color .15s; margin-bottom:-2px;
+  }
+  .pause-tab:hover { color:#aaa; }
+  .pause-tab.active { color:var(--gore); border-bottom-color:var(--gore); }
+  #pause-content {
+    width:340px; min-height:180px; padding:20px 0 10px;
+    display:flex; flex-direction:column; align-items:center; gap:10px;
+  }
+  .pause-btn {
+    width:220px; background:var(--blood-dark); color:var(--gore);
+    border:2px solid var(--gore); font-family:'Oswald',sans-serif;
+    font-size:1rem; letter-spacing:.2em; padding:9px 0; cursor:pointer;
+    text-transform:uppercase; transition:background .15s,box-shadow .15s;
+  }
+  .pause-btn:hover { background:var(--blood); box-shadow:0 0 16px #ff000044; }
+  .pause-btn.ghost {
+    background:none; color:#555; border-color:#333;
+  }
+  .pause-btn.ghost:hover { color:#aaa; border-color:#666; box-shadow:none; background:none; }
+  .stat-row {
+    width:260px; display:flex; justify-content:space-between;
+    font-size:.75rem; color:#aaa; padding:5px 0;
+    border-bottom:1px solid #1e1e1e;
+  }
+  .stat-row span:last-child { color:var(--green); font-family:'Oswald',sans-serif; font-size:.9rem; }
+  .stat-row.highlight span:last-child { color:var(--gore); }
+  #controls-table { width:280px; }
+  .ctrl-row { display:flex; justify-content:space-between; font-size:.72rem; padding:5px 0; border-bottom:1px solid #1a1a1a; }
+  .ctrl-row span:first-child { color:#555; }
+  .ctrl-row span:last-child  { color:#ccc; font-family:'Oswald',sans-serif; font-size:.8rem; letter-spacing:.1em; }
+</style>
+</head>
+<body>
+<h1>☣ DEADZONE</h1>
+<div id="subtitle">// WAVE SURVIVAL PROTOCOL //</div>
+<div id="game-wrapper">
+  <div id="hud">
+    <div class="hud-block"><div class="hud-label">Wave</div><div class="hud-value yellow" id="hud-wave">1</div></div>
+    <div class="hud-block"><div class="hud-label">Score</div><div class="hud-value" id="hud-score">0</div></div>
+    <div class="hud-block"><div class="hud-label">Kills</div><div class="hud-value" id="hud-kills">0</div></div>
+    <div class="hud-block">
+      <div class="hud-label">Health</div>
+      <div class="hud-value red" id="hud-hp">100</div>
+      <div id="health-bar-wrap"><div id="health-bar" style="width:100%"></div></div>
+    </div>
+    <div class="hud-block">
+      <div class="hud-label">Weapon</div>
+      <div class="hud-value" id="hud-weapon" style="font-size:.85rem;letter-spacing:.1em">PISTOL</div>
+    </div>
+    <div class="hud-block">
+      <div class="hud-label">Ammo</div>
+      <div class="hud-value" id="hud-ammo">30</div>
+      <div id="ammo-pips"></div>
+    </div>
+    <div class="hud-block"><div class="hud-label">Reload</div><div id="hud-reload" style="color:#555;font-size:.7rem">READY</div></div>
+  </div>
+  <div class="canvas-wrap">
+    <canvas id="canvas" width="640" height="480"></canvas>
+    <div id="boss-bar-wrap">
+      <div id="boss-name">BOSS</div>
+      <div id="boss-hp-track"><div id="boss-hp-bar" style="width:100%"></div></div>
+    </div>
+    <div id="overlay">
+      <h2 id="overlay-title">DEADZONE</h2>
+      <p id="overlay-msg">Survive as long as you can.</p>
+      <button id="overlay-btn">START GAME</button>
+      <div id="controls-hint">WASD/ARROWS — Move &nbsp;|&nbsp; Mouse — Aim &nbsp;|&nbsp; LMB — Shoot &nbsp;|&nbsp; R — Reload</div>
+    </div>
+
+    <div id="pause-overlay">
+      <div id="pause-title">⏸ PAUSED</div>
+      <div id="pause-tabs">
+        <button class="pause-tab active" onclick="showPauseTab('resume')">Resume</button>
+        <button class="pause-tab" onclick="showPauseTab('stats')">Stats</button>
+        <button class="pause-tab" onclick="showPauseTab('controls')">Controls</button>
+        <button class="pause-tab" onclick="showPauseTab('weapons')">Weapons</button>
+      </div>
+      <div id="pause-content"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+ctx.imageSmoothingEnabled = false;
+const W = canvas.width, H = canvas.height;
+
+// World is larger than the canvas - camera follows player
+const WORLD_W = 2400, WORLD_H = 2400;
+let camX = 0, camY = 0;
+
+// =====================
+// SPRITE ENGINE
+// =====================
+const SCALE = 3, SZ = 16, BSZ = 24; // boss sprites are 24x24
+
+function makeSprite(pixels, palette, size) {
+  size = size || SZ;
+  const oc = document.createElement('canvas');
+  oc.width = size; oc.height = size;
+  const oc2 = oc.getContext('2d');
+  for (let row = 0; row < pixels.length; row++) {
+    for (let col = 0; col < pixels[row].length; col++) {
+      const ch = pixels[row][col];
+      if (ch === '.' || !palette[ch]) continue;
+      oc2.fillStyle = palette[ch];
+      oc2.fillRect(col, row, 1, 1);
+    }
+  }
+  return oc;
+}
+function makeFlash(pixels, palette, size) {
+  size = size || SZ;
+  const oc = document.createElement('canvas');
+  oc.width = size; oc.height = size;
+  const oc2 = oc.getContext('2d');
+  for (let row = 0; row < pixels.length; row++) {
+    for (let col = 0; col < pixels[row].length; col++) {
+      const ch = pixels[row][col];
+      if (ch === '.' || !palette[ch]) continue;
+      oc2.fillStyle = '#ffffff';
+      oc2.fillRect(col, row, 1, 1);
+    }
+  }
+  return oc;
+}
+function drawSprite(sprite, x, y, facingLeft, alpha, scale) {
+  scale = scale || SCALE;
+  const sz = sprite.width;
+  ctx.save();
+  if (alpha !== undefined) ctx.globalAlpha = alpha;
+  ctx.translate(x, y);
+  if (facingLeft) ctx.scale(-1, 1);
+  ctx.drawImage(sprite, -sz*scale/2, -sz*scale/2, sz*scale, sz*scale);
+  ctx.restore();
+}
+
+// =====================
+// PLAYER SPRITE  — detailed survivor, 16x16
+// =====================
+// Reading guide (facing right):
+//   Head: dark messy hair, tan skin, visible brow/nose/jaw, red bandana over mouth
+//   Body: olive tactical vest with chest strap, shoulder pad left side, torn sleeve right
+//   Legs: dark camo trousers with knee pad on left leg
+//   Feet: heavy combat boots
+const playerPixels = [
+  '....DHHHHHHD....',  // row 0  — top of hair
+  '...DHHHHHHHHD...',  // row 1  — full hair crown
+  '..DHSSSSSSSFHD..',  // row 2  — head (S=skin, F=brow shadow)
+  '..DHSEESSSSHD...',  // row 3  — eyes (E=eyes)
+  '..DHSSNSSSSHD...',  // row 4  — nose (N=nose shadow)
+  '...DBBBBBBHD....',  // row 5  — red bandana covers lower face
+  '..XVVVVVVVVVD...',  // row 6  — shoulder pad left (X), vest (V)
+  '.DVVVKVVVKVVVD..',  // row 7  — vest with chest strap (K)
+  '.DVVVVVVVVVVVD..',  // row 8  — vest body wide
+  '.DVVKPVVVPKVVD..',  // row 9  — ammo pouches (P) on vest
+  '.DAAAVVVVVAAD..',   // row 10 — left arm (A=arm/sleeve torn), vest centre
+  '..DTTGTTTTTD....',  // row 11 — trousers (T), knee pad (G) left leg
+  '..DTTTTTTTTD....',  // row 12 — trousers
+  '..DTTGTTTTTD....',  // row 13 — knee pad again
+  '..DBBBB.BBBBD...',  // row 14 — heavy boots (B)
+  '..DBBBB.BBBBD...',  // row 15 — boot soles
+];
+const playerPalette = {
+  S:'#d4a870',   // skin
+  H:'#1c0e02',   // dark brown/black hair
+  D:'#080400',   // hard outline
+  F:'#b08040',   // brow / face shadow
+  E:'#1a1a2e',   // eyes (dark blue-black)
+  N:'#b07848',   // nose shadow
+  B:'#881a1a',   // red bandana + boot dark
+  V:'#4e5e3a',   // olive tactical vest
+  K:'#2a3618',   // vest strap / buckle
+  P:'#3a4828',   // ammo pouch (darker)
+  X:'#5a6a48',   // shoulder pad (lighter)
+  A:'#c08850',   // bare arm / torn sleeve
+  T:'#2e2818',   // dark camo trousers
+  G:'#3a3828',   // knee pad
+};
+
+// =====================
+// ZOMBIE SPRITES
+// =====================
+// BASIC ZOMBIE — human face with two eyes, balding, green rotting flesh
+const zombiePixels = [
+  '....HHHHHH......',   // H=thin wispy balding hair on sides
+  '...HZZZZZZHD....',   // Z=green rotting skin
+  '..HZZEZZEZHD....',   // E=two separate eye sockets
+  '..HZZLZZLZZH....',   // L=two lit eyes spaced apart
+  '..HZZZNZZZZH....',   // N=nose bridge
+  '..HZZMZMZZZH....',   // M=open mouth showing teeth
+  '...DTTTTTTD.....',   // T=torn shirt
+  '..DTTWTTTWTD....',   // W=wound tear
+  '.DTTTTTTTTTTTD..',
+  '.DTTRTTTTTTTD...',   // R=blood stain
+  '..DTTTTTTTTD....',
+  '..DPPPP.PPPD....',
+  '..DPPPP.PPPD....',
+  '..DPPP...PPPD...',
+  '..DBBB...BBBD...',
+  '................',
+];
+const zombiePalette = {
+  Z:'#8ab86a', H:'#3a4a1a', E:'#0a0808',
+  L:'#dd4400', N:'#6a9848', M:'#e8d890',
+  T:'#3a3028', W:'#6aaa40', R:'#880000',
+  P:'#2a2018', B:'#1a1008', D:'#1a1008',
+};
+
+// BIG ZOMBIE — wider human face, balder, angrier, more rotted
+const bigZombiePixels = [
+  '....HHHHHHHH....',   // barely any hair
+  '...HZZZZZZZZH...',
+  '..HZZEZZEEZZH..',   // E=two eye sockets, spread wider
+  '..HZZLZZLZZZH...',   // L=two eyes glowing red
+  '..HZZZZNZZZZH...',   // N=nose
+  '..HZZZMZMZZZH...',   // M=teeth in mouth
+  '...DDDDDDDDDD...',
+  '..DVVVVVVVVVVD..',
+  '.DVVWVVVVWVVVD..',   // W=rip showing green flesh
+  'DVVVZZVVVZZVVD..',   // Z=flesh through rips
+  '.DVVVRVVVVVVD...',   // R=blood
+  '..DVVVVVVVVD....',
+  '..DPPPPPPPPD....',
+  '..DPPPP.PPPD....',
+  '..DBBB...BBBD...',
+  '................',
+];
+const bigZombiePalette = {
+  Z:'#7aaa50', H:'#2a3a10', E:'#080806',
+  L:'#ee3300', N:'#5a8838', M:'#d8c870',
+  V:'#2e2a22', W:'#5a9a30', R:'#770000',
+  P:'#222018', B:'#0e0c08', D:'#0e0c08',
+};
+
+
+
+// =====================
+// SPECIAL ZOMBIE SPRITES  (16x16, richly detailed)
+// =====================
+
+
+// Distinct silhouette: hunched, WIDE bloated midsection, visible acid tumours,
+// glowing green cracks across skin, drooling acid, yellow-green pustules
+const spitterPixels = [
+  '.....KKKKKK.....',  // K=darkened skull-like head
+  '....KGGGGGK.....',
+  '...KGGYYGGGK....',  // Y=glowing yellow-green eyes
+  '...KGGGGGGAK....',  // A=acid drool from jaw
+  '...KGAAAGGGK....',  // wide acid mouth
+  '....KKAKKK......',  // A=acid drip from chin
+  '...PPPPPPPPP....',  // P=bloated torso, much wider than head
+  '..PPUPPPUPPPP...',  // U=acid tumour/pustule
+  '.PPPPPPPPPPPP...',
+  '.PPUPPPPPUPPPP..',  // pustules on sides
+  '.PPCPPPPCPPPP...',  // C=acid crack glowing through skin
+  '..PPPPPPPPPPP...',
+  '..LPPPP.PPPPL...',  // L=acid drip leg
+  '..LLPP...PPLL...',
+  '...LL.....LL....',
+  '................',
+];
+const spitterPalette = {
+  K:'#1a2a10', G:'#6a8840',               // head / skin
+  Y:'#eeff44',                             // glowing eyes
+  A:'#bbee22',                             // acid mouth / drool
+  P:'#4a6820',                             // bloated body (darker green)
+  U:'#ccff00',                             // pustule/tumour (bright)
+  C:'#88ff00',                             // glowing acid crack
+  L:'#99dd00',                             // acid-soaked legs
+};
+
+
+// ARMOURED ZOMBIE — military gear, cracked helmet, bulletproof vest, visible wounds
+// Distinct: grey/green camo vest, dented metal helmet, red cracks in armour
+const armouredPixels = [
+  '....HHHHHHH.....',
+  '...HHHHHHHH.....',
+  '..HCHHHHHCHH....',   // C = crack in helmet
+  '..HHHHHHHHH.....',
+  '..HHERHHHRHH....',   // E = eye slit, R = blood drip from crack
+  '...HHHHHHHH.....',
+  '..VVVVVVVVVV....',  // V = vest
+  '.VVKVVVVKVVVV...',  // K = dark plate seam
+  '.VVVVVVVVVVVV...',
+  '.VVKVVVRVVKVV...',  // R = bullet dent / blood
+  '..VVVVVVVVVV....',
+  '..PPPPPPPPPP....',
+  '..PPPP..PPPP....',
+  '..PPPP..PPPP....',
+  '..SSSS..SSSS....',
+  '................',
+];
+const armouredPalette = {
+  H:'#787878', C:'#cc2200', E:'#dd2200', R:'#aa0000',
+  V:'#6a7a5a', K:'#3a4a2a',
+  P:'#4a3018', S:'#2a1a08',
+};
+
+
+// Build special sprites
+const spitterSprite  = makeSprite(spitterPixels,  spitterPalette);
+const spitterFlash   = makeFlash(spitterPixels,   spitterPalette);
+const armouredSprite = makeSprite(armouredPixels, armouredPalette);
+const armouredFlash  = makeFlash(armouredPixels,  armouredPalette);
+
+
+
+// Boss 1: THE BRUTE — massive hulking zombie boss, wave 5
+// Wide armoured shoulders, angry green face, chains on chest, huge legs
+const brutePixels = [
+  '......GGGGGGGG..........',   // bald green head, wide
+  '.....GZZZZZZZZZG........',
+  '....GZZEZZEEZZGG........',   // E=deep eye sockets, two eyes
+  '....GZZLLZZLLZZG........',   // L=glowing red eyes
+  '....GZZZZNNZZZG.........',   // N=flat crushed nose
+  '....GZZMZZMZZZG.........',   // M=bared teeth
+  '.....GGGGGGGGGG.........',   // jaw/chin
+  '..KKKKKVVVVVKKKKK.......',   // K=spiked shoulder pauldrons, V=neck
+  '.KKKKKKVVVVVVKKKKK......',   // wide armoured shoulders
+  'BKKKKKKVVVVVVKKKKKB.....',   // B=arm bulk
+  'BBKKKKKKVVVVKKKKKBB.....',
+  'BBBKKKKVVVVVVKKKKBBB....',   // massive arms
+  '.BBBBBBBVVVBBBBBBB......',   // V=chest centre stripe
+  '..BBBCCCCCCCCBBBB.......',   // C=chain across chest
+  '...BBCZZZCZZZCBB........',   // Z=flesh showing through
+  '....BBBBBBBBBBB.........',
+  '....PPPPPP.PPPP.........',   // P=thick trousers
+  '....PPPPPP.PPPP.........',
+  '....PPPPP...PPPP........',
+  '....BBBBB...BBBBB.......',   // B=heavy boots
+  '...BBBBBB...BBBBB.......',   // wider boots
+  '...BBBBBB...BBBBB.......',
+  '........................',
+  '........................',
+];
+const brutePalette = {
+  G:'#3a6a1a', Z:'#7aaa50',    // green zombie flesh
+  E:'#0a0808', L:'#ff2200',    // eyes
+  N:'#5a8838', M:'#e0d060',    // nose/teeth
+  K:'#555555', V:'#888888',    // metal shoulder armour
+  B:'#3a2a18',                  // dark arm/boot flesh
+  C:'#aaaaaa',                  // chains
+  P:'#2a2018',                  // trousers
+};
+
+// Boss 2: THE SCREAMER — fast, glowing pink horror, wave 10
+const screamerPixels = [
+  '....PPPPPPPP........',
+  '...PFFFFFFFFP.......',
+  '..PFFFFFFFFFFP......',
+  '..PFFLFFFFLFP.......',
+  '..PFFMFFFFMFP.......',
+  '...PFFOOFFFP........',
+  '..SSSSSSSSSS........',
+  '.SSSSSSSSSSSS.......',
+  '.SSSSSSSSSSSS.......',
+  '.SSSSSRSSSSS........',
+  '..TTTTTTTTTT........',
+  '..TT....TTTT........',
+  '..TT....TTTT........',
+  '..TTTT..TTTT........',
+  '..BBBB..BBBB........',
+  '.....................',
+  '.....................',
+  '.....................',
+  '.....................',
+  '.....................',
+  '.....................',
+  '.....................',
+  '.....................',
+  '.....................',
+];
+const screamerPalette = { F:'#f0a0d0',P:'#8a2060',L:'#ff00ff',M:'#000',O:'#ff4444',S:'#c060a0',T:'#6a1040',R:'#ff0000',B:'#3a0820' };
+
+// Boss 3: THE TANK — military zombie in body armor, wave 15
+const tankPixels = [
+  '....KKKKKKKKK.......',
+  '...KZZZZZZZZZK......',
+  '..KZZZZZZZZZZK......',
+  '..KZZEZZZZEZK.......',
+  '..KZZZZZZZZZK.......',
+  '...KZZZMZZZK........',
+  '.MMMMMMMMMMMM.......',
+  '.MMVVVVVVVVMM.......',
+  'MMMVVVVVVVVMMM......',
+  'MMMVVVRVVVVMMM......',
+  'MMMVVVVVVVVMMM......',
+  '.MMVVVVVVVVMM.......',
+  '.MMMMMMMMMMMM.......',
+  '..CCCCCCCCCC........',
+  '..CCCC..CCCC........',
+  '..CCCC..CCCC........',
+  '..CCCC..CCCC........',
+  '..BBBB..BBBB........',
+  '.....................',
+  '.....................',
+  '.....................',
+  '.....................',
+  '.....................',
+  '.....................',
+];
+const tankPalette = { Z:'#8fad6a',K:'#2a3a2a',E:'#ff2200',M:'#3a4a3a',V:'#5a6a5a',R:'#cc0000',C:'#4a5a4a',B:'#1a2a1a' };
+
+// Boss 4: THE NECROMANCER — robed skeletal sorcerer, wave 20
+const necroPixels = [
+  '....RRRRRRRR........',
+  '...RWWWWWWWWR.......',
+  '..RWWWWWWWWWR.......',
+  '..RWWEWWWWWR........',
+  '..RWWWWWEWWR........',
+  '...RWWWWWWR.........',
+  '..DDDDDDDDDD........',
+  '.DDRRRRRRRDD........',
+  '.DDRRRRRRRDD........',
+  '.DDRRRXRRRDD........',
+  '.DDRRRRRRRDD........',
+  '.DDDDDDDDDDDD.......',
+  '..BBBBBBBBBB........',
+  '..BBBB..BBBB........',
+  '..BBBB..BBBB........',
+  '..BBBB..BBBB........',
+  '..BBBB..BBBB........',
+  '.....................',
+  '.....................',
+  '.....................',
+  '.....................',
+  '.....................',
+  '.....................',
+  '.....................',
+];
+const necroPalette = { W:'#ddeeff',R:'#551188',E:'#00ffff',D:'#220033',X:'#ff00ff',B:'#110022' };
+
+// Boss 5: THE ABOMINATION — giant mutated multi-limbed beast, wave 25+
+const abomPixels = [
+  '...XXXXXXXXX........',
+  '..XGGGGGGGGX........',
+  '.XGGGGGGGGGX........',
+  '.XGGLGGGLGGX........',
+  '.XGGRGGGRGX.........',
+  '..XGGMGGGX..........',
+  'TTXXXXXXXXXTT.......',
+  'TTTGGGGGGGTTTT......',
+  'TTTTGGGGGGTTTTT.....',
+  'TTTTGGGRGGTTTT......',
+  'TTTGGGGGGGTTTT......',
+  'TTXXXXXXXXXTT.......',
+  '..PPPPPPPPPP........',
+  '..PPP....PPP........',
+  '..PPP....PPP........',
+  '..PPPP..PPPP........',
+  '..SSSS..SSSS........',
+  '.....................',
+  '.....................',
+  '.....................',
+  '.....................',
+  '.....................',
+  '.....................',
+  '.....................',
+];
+const abomPalette = { G:'#4a7a30',X:'#1a3a10',L:'#ff4400',R:'#cc0000',M:'#000',T:'#8a5a20',P:'#2a1808',S:'#1a1000' };
+
+// ZOMBIE SKIN 2 — pale grey-blue corpse, fresher turn, dark suit remnants
+const zombiePalette2 = {
+  Z:'#8898a8', H:'#1a1a2a', E:'#0a0808',
+  L:'#cc2200', N:'#607080', M:'#e0d8c0',
+  T:'#1a1a2a', W:'#8898a8', R:'#880000',
+  P:'#222228', B:'#0e0e18', D:'#080810',
+};
+
+// ZOMBIE SKIN 3 — dark brown-purple bloated rot, long dead
+const zombiePalette3 = {
+  Z:'#7a5a6a', H:'#1a0818', E:'#080408',
+  L:'#ff6600', N:'#5a3a4a', M:'#c8b870',
+  T:'#2a1828', W:'#7a5a6a', R:'#660000',
+  P:'#1e1018', B:'#0e0808', D:'#0e0808',
+};
+
+// Build all sprites
+const playerSprite    = makeSprite(playerPixels, playerPalette);
+const zombieSprites   = [
+  makeSprite(zombiePixels, zombiePalette),
+  makeSprite(zombiePixels, zombiePalette2),
+  makeSprite(zombiePixels, zombiePalette3),
+];
+const zombieFlashes   = [
+  makeFlash(zombiePixels, zombiePalette),
+  makeFlash(zombiePixels, zombiePalette2),
+  makeFlash(zombiePixels, zombiePalette3),
+];
+// Keep these for backward compat with any remaining references
+const zombieSprite = zombieSprites[0];
+const zombieFlash  = zombieFlashes[0];
+const bigZombieSprite = makeSprite(bigZombiePixels, bigZombiePalette);
+const bigZombieFlash  = makeFlash(bigZombiePixels, bigZombiePalette);
+
+const bossDefs = [
+  { name:'THE BRUTE',        pixels:brutePixels,    palette:brutePalette,    hp:400, speed:0.9, r:36, score:500,  dmg:25 },
+  { name:'THE SCREAMER',     pixels:screamerPixels, palette:screamerPalette, hp:280, speed:2.2, r:28, score:600,  dmg:15 },
+  { name:'THE TANK',         pixels:tankPixels,     palette:tankPalette,     hp:600, speed:0.7, r:38, score:700,  dmg:30 },
+  { name:'THE NECROMANCER',  pixels:necroPixels,    palette:necroPalette,    hp:350, speed:1.2, r:30, score:800,  dmg:20 },
+  { name:'THE ABOMINATION',  pixels:abomPixels,     palette:abomPalette,     hp:800, speed:0.6, r:44, score:1000, dmg:35 },
+];
+bossDefs.forEach(b => {
+  b.sprite = makeSprite(b.pixels, b.palette, BSZ);
+  b.flash  = makeFlash(b.pixels, b.palette, BSZ);
+});
+
+// =====================
+// GAME STATE
+// =====================
+let state = 'menu';
+let player, bullets, zombies, particles, bloodPools;
+let wave, score, kills, frameCount;
+let keys = {}, mouse = {x:W/2, y:H/2, down:false};
+let nextWaveTimer = 0, zombiesRemaining = 0;
+let zombiesSpawnedThisWave = 0, zombiesTotalThisWave = 0;
+let currentBoss = null;
+const waveCounts = [0, 10];
+let shotsFired = 0, shotsHit = 0, damageTaken = 0;
+let medikits = [];
+let gunDrops = [];
+let weaponsCollected = { shotgun:0, smg:0, rifle:0 };
+let acidPools = [];       // spitter acid puddles
+let acidProjectiles = []; // in-flight acid globs
+let hordeActive = false;  // true during a horde event
+
+// =====================
+// WEAPON DEFINITIONS
+// =====================
+const WEAPONS = {
+  pistol:   { name:'PISTOL',   ammo:8,   maxAmmo:8,   fireRate:18, reloadTime:110, spread:.12, damage:12, bulletSpeed:11, pellets:1,  color:'#aaaaaa' },
+  shotgun:  { name:'SHOTGUN',  ammo:6,   maxAmmo:6,   fireRate:30, reloadTime:120, spread:.25, damage:15, bulletSpeed:11, pellets:6,  color:'#c87820' },
+  smg:      { name:'SMG',      ammo:35,  maxAmmo:35,  fireRate:5,  reloadTime:80,  spread:.22, damage:7,  bulletSpeed:12, pellets:1,  color:'#40a0d0' },
+  rifle:    { name:'RIFLE',    ammo:15,  maxAmmo:15,  fireRate:12, reloadTime:100, spread:.015, damage:65, bulletSpeed:22, pellets:1,  color:'#d04040' },
+};
+let worldObjects = []; // trees, rocks, bushes
+
+// =====================
+// FOREST SPRITES (24x24 pixel art, better shading)
+// =====================
+const TREE_SCALE = 5;
+const ROCK_SCALE = 4;
+const BUSH_SCALE = 5;
+const FSZ = 24; // forest sprite size
+
+// --- TREES (24x24) ---
+const treeDefs = [
+  // Tree 1: tall layered pine with shadow
+  { pixels:[
+    '........................',
+    '...........DD...........',
+    '..........DGGD..........',
+    '.........DGGGGD.........',
+    '........DGSGGGGD........',
+    '.......DGGGGGGGGD.......',
+    '......DGGSGGGGGGGGD.....',
+    '.....DGGGGGGGGGGGGGGD...',
+    '......DGGSGGGGGGGGD.....',
+    '.......DGGGGGGGGD.......',
+    '......DGGSGGGGGGGGD.....',
+    '.....DGGGGGGGGGGGGGGD...',
+    '......DGGGGGGGGGGGGD....',
+    '.......DDGGGGGGGGD......',
+    '........DDGGGGDD........',
+    '.........DBBBBBD........',
+    '.........DBBBBBD........',
+    '.........DBBBBBD........',
+    '.........DBBBBBD........',
+    '..........DBBBD.........',
+    '........................',
+    '........................',
+    '........................',
+    '........................',
+  ], palette:{ G:'#2a6020', D:'#0e2a0e', B:'#4a2e10', S:'#4a9a3a', L:'#1a4a10' }, r:26 },
+
+  // Tree 2: round oak with multiple highlight layers
+  { pixels:[
+    '........................',
+    '.......DDDDDDD..........',
+    '......DGGGGGGGGD........',
+    '.....DGGSGGGGGGGGD......',
+    '....DGGGGGGGGGGGGGGD....',
+    '....DGGGSGGGGGGGGGGD....',
+    '....DGGGGGGGGGGGGGGD....',
+    '....DGGGSGGGGSGGGGGGD...',
+    '.....DGGGGGGGGGGGGD.....',
+    '......DGGGGGGGGGGD......',
+    '.......DDDDDDDDDD.......',
+    '.........DBBBBBD........',
+    '.........DBBBBBD........',
+    '.........DBBBBBD........',
+    '..........DBBBD.........',
+    '..........DBBBD.........',
+    '........................',
+    '........................',
+    '........................',
+    '........................',
+    '........................',
+    '........................',
+    '........................',
+    '........................',
+  ], palette:{ G:'#347a34', D:'#1a4a1a', B:'#5a3a14', S:'#55aa44', L:'#244a24' }, r:24 },
+
+  // Tree 3: dead tree with gnarled branches
+  { pixels:[
+    '........................',
+    '..........BBB...........',
+    '.........BBBBB..........',
+    '...BBB..BBBBBBB.BBB.....',
+    '....BBBBBBBBBBBBBB......',
+    '.....BBBBBBBBBBB........',
+    '......BBBBBBBBBB........',
+    '........BBBBBBB.........',
+    '.........BBBBBB.BBB.....',
+    '..........BBBBBBB.......',
+    '..........BBBBBBB.......',
+    '..........BBBBBB........',
+    '..........BBBBBB........',
+    '..........BBBBBB........',
+    '..........BBBBBB........',
+    '..........BBBBBB........',
+    '..........BBBBBB........',
+    '..........BBBBBB........',
+    '..........BBBBBB........',
+    '..........BBBBBB........',
+    '........................',
+    '........................',
+    '........................',
+    '........................',
+  ], palette:{ B:'#4a3020', D:'#2a1a0a', L:'#6a4a30' }, r:16 },
+
+  // Tree 4: dark spruce, very dense
+  { pixels:[
+    '........................',
+    '..........DDD...........',
+    '.........DGGGGD.........',
+    '........DGGSGGGGD.......',
+    '.......DGGGGGGGGGGD.....',
+    '......DGGGGSGGGGGGGGD...',
+    '.......DGGGGGGGGGGD.....',
+    '........DGSGGGGGGD......',
+    '.......DGGGGGGGGGGD.....',
+    '......DGGGGGSGGGGGGD....',
+    '.......DGGGGGGGGGD......',
+    '........DGGGGGGD........',
+    '.......DGGGGGGGGD.......',
+    '......DGGGGGSGGGGD......',
+    '.......DDDDDDDDDD.......',
+    '.........DBBBBBD........',
+    '.........DBBBBBD........',
+    '.........DBBBBBD........',
+    '.........DBBBBBD........',
+    '..........DBBBD.........',
+    '........................',
+    '........................',
+    '........................',
+    '........................',
+  ], palette:{ G:'#1a4a1a', D:'#0a1e0a', B:'#3a1e08', S:'#2a6a2a', L:'#0e300e' }, r:28 },
+
+  // Tree 5: birch with white bark and full canopy
+  { pixels:[
+    '........................',
+    '.......DDDDDDD..........',
+    '......DGGGGGGGGD........',
+    '.....DGGSGGGGSGGD.......',
+    '....DGGGGGGGGGGGGD......',
+    '....DGGGSGGGGGGGGD......',
+    '....DGGGGGGGGGGGGD......',
+    '.....DGGGSGGGGGGD.......',
+    '......DGGGGGGGGD........',
+    '.......DDDDDDDD.........',
+    '.........WWWWW..........',
+    '.........WDWWW..........',
+    '.........WWWWW..........',
+    '.........WWDWW..........',
+    '.........WWWWW..........',
+    '.........WDWWW..........',
+    '.........WWWWW..........',
+    '.........WWDWW..........',
+    '.........WWWWW..........',
+    '........................',
+    '........................',
+    '........................',
+    '........................',
+    '........................',
+  ], palette:{ G:'#4a8a3a', D:'#1a4a1a', W:'#d8d0c0', S:'#6aaa5a', L:'#304a30' }, r:22 },
+];
+
+// --- ROCKS (24x24) ---
+const rockDefs = [
+  // Rock 1: big round boulder with shading
+  { pixels:[
+    '........................',
+    '........................',
+    '.......DDDDDDD..........',
+    '......DGGGGGGGGD........',
+    '.....DGGSGGGGGGGGD......',
+    '....DGGGGGGGGGGGGD......',
+    '....DGGGSGGGGGGGGD......',
+    '....DGGGGGGGGGGGGD......',
+    '....DGGGGGGGGGGGDD......',
+    '.....DGGGGGGGGDDD.......',
+    '......DGGGGGDDD.........',
+    '.......DDDDDDD..........',
+    '........................',
+    '........................',
+    '........................',
+    '........................',
+    '........................',
+    '........................',
+    '........................',
+    '........................',
+    '........................',
+    '........................',
+    '........................',
+    '........................',
+  ], palette:{ G:'#7a7a7a', D:'#2a2a2a', S:'#aaaaaa', L:'#555555' }, r:18 },
+
+  // Rock 2: cluster of jagged rocks
+  { pixels:[
+    '........................',
+    '........................',
+    '....DDDD....DDDDD.......',
+    '...DGGGGGD.DGGGGGD......',
+    '...DGSGGGGDDGGSGGD......',
+    '...DGGGGGGGGGGGGD.......',
+    '...DGGGGGGGGGGGDD.......',
+    '....DGGGGGGGGDDD........',
+    '.....DDDDDDDDD..........',
+    '........................',
+    '........................',
+    '........................',
+    '........................',
+    '........................',
+    '........................',
+    '........................',
+    '........................',
+    '........................',
+    '........................',
+    '........................',
+    '........................',
+    '........................',
+    '........................',
+    '........................',
+  ], palette:{ G:'#686868', D:'#242424', S:'#989898', L:'#484848' }, r:15 },
+
+  // Rock 3: mossy rock with green patches
+  { pixels:[
+    '........................',
+    '........................',
+    '......DDDDDDD...........',
+    '.....DGGGGGGGGD.........',
+    '....DGMMSGGGGGGD........',
+    '....DMMGGGGGGGGD........',
+    '....DGGMGGGGGGGD........',
+    '....DGGGGGGGGGDD........',
+    '.....DGGGGGGDDD.........',
+    '......DDDDDDD...........',
+    '........................',
+    '........................',
+    '........................',
+    '........................',
+    '........................',
+    '........................',
+    '........................',
+    '........................',
+    '........................',
+    '........................',
+    '........................',
+    '........................',
+    '........................',
+    '........................',
+  ], palette:{ G:'#7a7a7a', D:'#252525', M:'#4a7a3a', S:'#aaaaaa', L:'#505050' }, r:16 },
+];
+
+// --- BUSHES (24x24) ---
+const bushDefs = [
+  // Bush 1: full round bush with layered shading
+  { pixels:[
+    '........................',
+    '........................',
+    '.......DDDDDDD..........',
+    '......DGGGGGGGGD........',
+    '.....DGGSGGGGGGGGD......',
+    '....DGGGGGGGGGGGGD......',
+    '....DGGGSGGGGSGGGD......',
+    '....DGGGGGGGGGGGGD......',
+    '....DGGGSGGGGGGGGD......',
+    '.....DGGGGGGGGGGD.......',
+    '......DDDDDDDDDDD.......',
+    '........................',
+    '........................',
+    '........................',
+    '........................',
+    '........................',
+    '........................',
+    '........................',
+    '........................',
+    '........................',
+    '........................',
+    '........................',
+    '........................',
+    '........................',
+  ], palette:{ G:'#3a7a2a', D:'#1a4a0a', S:'#60b040', L:'#254a15' } },
+
+  // Bush 2: berry bush with red berries and lighter leaves
+  { pixels:[
+    '........................',
+    '........................',
+    '......DDDDDDDD..........',
+    '.....DGGGGGGGGGGD.......',
+    '....DGRGGSGGGGRGGD......',
+    '....DGGGGGGGGGGGGD......',
+    '....DGGGSGGGGSGGGD......',
+    '....DGRGGGGGGGRGGD......',
+    '.....DGGGGGGGGGGD.......',
+    '......DDDDDDDDDD........',
+    '........................',
+    '........................',
+    '........................',
+    '........................',
+    '........................',
+    '........................',
+    '........................',
+    '........................',
+    '........................',
+    '........................',
+    '........................',
+    '........................',
+    '........................',
+    '........................',
+  ], palette:{ G:'#2a6a1a', D:'#0e3a08', R:'#cc3333', S:'#50a030', L:'#1a4010' } },
+
+  // Bush 3: wide dark thicket
+  { pixels:[
+    '........................',
+    '........................',
+    '....DDDDDDDDDDDDD.......',
+    '...DGGGGGGGGGGGGGGD.....',
+    '..DGGSGGGGGGGSGGGGD.....',
+    '..DGGGGGGGGGGGGGGD......',
+    '..DGGGSGGGGGSGGGGGD.....',
+    '..DGGGGGGGGGGGGGGD......',
+    '..DGGSGGGGGGGSGGGGD.....',
+    '...DGGGGGGGGGGGGD.......',
+    '....DDDDDDDDDDDDD.......',
+    '........................',
+    '........................',
+    '........................',
+    '........................',
+    '........................',
+    '........................',
+    '........................',
+    '........................',
+    '........................',
+    '........................',
+    '........................',
+    '........................',
+    '........................',
+  ], palette:{ G:'#1e5018', D:'#0a2a06', S:'#3a7028', L:'#142a0e' } },
+];
+
+// Pre-build all forest sprites
+function makeForestSprite(pixels, palette) {
+  const oc = document.createElement('canvas');
+  oc.width = FSZ; oc.height = FSZ;
+  const oc2 = oc.getContext('2d');
+  for (let row = 0; row < pixels.length; row++) {
+    for (let col = 0; col < pixels[row].length; col++) {
+      const ch = pixels[row][col];
+      if (ch === '.' || !palette[ch]) continue;
+      oc2.fillStyle = palette[ch];
+      oc2.fillRect(col, row, 1, 1);
+    }
+  }
+  return oc;
+}
+
+const treeSprites = treeDefs.map(d => makeForestSprite(d.pixels, d.palette));
+const rockSprites = rockDefs.map(d => makeForestSprite(d.pixels, d.palette));
+const bushSprites = bushDefs.map(d => makeForestSprite(d.pixels, d.palette));
+
+function drawForestSprite(sprite, x, y, scale, alpha) {
+  const sz = FSZ;
+  ctx.save();
+  if (alpha !== undefined && alpha < 1) ctx.globalAlpha = alpha;
+  ctx.drawImage(sprite, x - sz*scale/2, y - sz*scale/2, sz*scale, sz*scale);
+  ctx.restore();
+}
+
+function generateWorld() {
+  worldObjects = [];
+  const rng = (min, max) => min + Math.random() * (max - min);
+  const safe = 220;
+
+  const tryPlace = (type, idx, x, y, r, collision) => {
+    if (Math.hypot(x - WORLD_W/2, y - WORLD_H/2) < safe) return;
+    // Check against ALL existing objects — visual radius + padding so nothing overlaps visually
+    for (const o of worldObjects) {
+      const visualR  = r  + (type    === 'tree' ? TREE_SCALE : type    === 'rock' ? ROCK_SCALE : BUSH_SCALE) * FSZ * 0.4;
+      const visualRo = o.r + (o.type  === 'tree' ? TREE_SCALE : o.type  === 'rock' ? ROCK_SCALE : BUSH_SCALE) * FSZ * 0.4;
+      if (Math.hypot(x - o.x, y - o.y) < visualR + visualRo * 0.5 + 20) return;
+    }
+    worldObjects.push({ type, idx, x, y, r, collision });
+  };
+
+  // Reduced counts — dense enough to feel like forest but not overwhelming
+  for (let i = 0; i < 160; i++) {
+    const idx = Math.floor(Math.random() * treeDefs.length);
+    tryPlace('tree', idx, rng(60, WORLD_W-60), rng(60, WORLD_H-60), treeDefs[idx].r, true);
+  }
+  for (let i = 0; i < 100; i++) {
+    const idx = Math.floor(Math.random() * rockDefs.length);
+    tryPlace('rock', idx, rng(60, WORLD_W-60), rng(60, WORLD_H-60), rockDefs[idx].r, true);
+  }
+  for (let i = 0; i < 130; i++) {
+    const idx = Math.floor(Math.random() * bushDefs.length);
+    tryPlace('bush', idx, rng(60, WORLD_W-60), rng(60, WORLD_H-60), 22, false);
+  }
+}
+
+function createPlayer() {
+  const w = WEAPONS.pistol;
+  return {
+    x:WORLD_W/2, y:WORLD_H/2, r:14, speed:3,
+    hp:100, maxHp:100,
+    ammo:w.ammo, maxAmmo:w.maxAmmo,
+    reloading:false, reloadTimer:0, reloadTime:w.reloadTime,
+    fireTimer:0, fireRate:w.fireRate, angle:0, invincible:0,
+    weapon:'pistol',
+    walkCycle:0,      // 0-1 walk animation phase
+    isMoving:false,   // true when WASD held
+    muzzleFlash:0,    // frames remaining for muzzle flash
+    hurtFlash:0,      // frames for red vignette on hit
+  };
+}
+
+function fireBullet() {
+  const p = player;
+  if (p.reloading || p.ammo <= 0 || p.fireTimer > 0) return;
+  const w = WEAPONS[p.weapon];
+  for (let i = 0; i < w.pellets; i++) {
+    const spread = (Math.random()-.5) * w.spread * 2;
+    const ang = p.angle + spread;
+    bullets.push({
+      x: p.x + Math.cos(p.angle)*28,
+      y: p.y + Math.sin(p.angle)*28,
+      vx: Math.cos(ang)*w.bulletSpeed,
+      vy: Math.sin(ang)*w.bulletSpeed,
+      angle: ang,
+      damage: w.damage,
+      weapon: p.weapon,
+      ox: p.x, oy: p.y,  // origin for falloff calc
+      life: 55,
+    });
+  }
+  p.ammo--;
+  p.fireTimer = p.fireRate;
+  p.muzzleFlash = 4;
+  shotsFired++;
+  if (p.ammo === 0) startReload();
+  updateAmmoUI();
+}
+
+function startReload() {
+  if (player.reloading || player.ammo === player.maxAmmo) return;
+  player.reloading = true;
+  player.reloadTimer = WEAPONS[player.weapon].reloadTime;
+  player.reloadTime = WEAPONS[player.weapon].reloadTime;
+}
+
+function spawnPosAroundPlayer(dist) {
+  const angle = Math.random() * Math.PI * 2;
+  const d = dist + Math.random() * 80;
+  return {
+    x: Math.max(0, Math.min(WORLD_W, player.x + Math.cos(angle) * d)),
+    y: Math.max(0, Math.min(WORLD_H, player.y + Math.sin(angle) * d)),
+  };
+}
+
+function spawnZombie(waveNum, forceType) {
+  const pos = spawnPosAroundPlayer(380);
+  const speedBase = .7 + waveNum * .08;
+
+  // Pick type: after wave 2 new types start appearing
+  let type = forceType;
+  if (!type) {
+    const roll = Math.random();
+    if (waveNum >= 3 && roll < .10)       type = 'spitter';
+    else if (waveNum >= 4 && roll < .18)  type = 'armoured';
+    else if (roll < .15 + waveNum * .02)  type = 'big';
+    else                                   type = 'normal';
+  }
+
+  const base = {
+    x:pos.x, y:pos.y, angle:0, flashTimer:0,
+    wobble:Math.random()*Math.PI*2, type,
+    skinIdx: Math.floor(Math.random() * 3),
+  };
+
+  if (type === 'spitter') return { ...base, r:14, hp:25, maxHp:25, speed:speedBase*.7+Math.random()*.3, dmg:6, spitTimer:Math.floor(Math.random()*120) };
+  if (type === 'armoured') return { ...base, r:14, hp:60, maxHp:60, speed:speedBase*.6+Math.random()*.2, dmg:18 };
+  if (type === 'big')     return { ...base, r:22, hp:60, maxHp:60, speed:speedBase*.65,                  dmg:15 };
+  /* normal */            return { ...base, r:14, hp:20, maxHp:20, speed:speedBase+Math.random()*.4,      dmg:8  };
+}
+
+
+function triggerHorde() {
+  if (hordeActive) return;
+  hordeActive = true;
+  const count = 20 + Math.floor(Math.random() * 15);
+  // All spawn from same side
+  const side = Math.floor(Math.random() * 4);
+  const announceEl = document.getElementById('overlay-msg');
+  // Flash warning on screen
+  showHordeWarning();
+  for (let i = 0; i < count; i++) {
+    setTimeout(() => {
+      if (state !== 'playing') return;
+      const jitter = (Math.random() - .5) * 200;
+      let x, y;
+      if      (side === 0) { x = player.x + jitter; y = player.y - 460; }
+      else if (side === 1) { x = player.x + 460;    y = player.y + jitter; }
+      else if (side === 2) { x = player.x + jitter; y = player.y + 460; }
+      else                  { x = player.x - 460;    y = player.y + jitter; }
+      x = Math.max(0, Math.min(WORLD_W, x));
+      y = Math.max(0, Math.min(WORLD_H, y));
+      const speed = 1.2 + Math.random() * .6;
+      zombies.push({ x, y, angle:0, flashTimer:0, wobble:Math.random()*Math.PI*2,
+        type:'normal', r:14, hp:20, maxHp:20, speed, dmg:8,
+        skinIdx: Math.floor(Math.random()*3) });
+    }, i * 150);
+  }
+  setTimeout(() => { hordeActive = false; }, count * 150 + 3000);
+}
+
+let hordeWarningTimer = 0;
+function showHordeWarning() { hordeWarningTimer = 180; }
+
+
+function spawnBossEnemy(waveNum) {
+  const bossIndex = (Math.floor(waveNum/5) - 1) % bossDefs.length;
+  const def = bossDefs[bossIndex];
+  const angle = Math.random() * Math.PI * 2;
+  const dist = 420 + Math.random() * 80;
+  const x = Math.max(0, Math.min(WORLD_W, player.x + Math.cos(angle) * dist));
+  const y = Math.max(0, Math.min(WORLD_H, player.y + Math.sin(angle) * dist));
+  const speedScale = 1 + (Math.floor(waveNum/5)-1)*0.1;
+  currentBoss = {
+    x, y, r:def.r,
+    hp:def.hp * speedScale, maxHp:def.hp * speedScale,
+    speed:def.speed, angle:0, flashTimer:0,
+    bossIndex, wobble:0, dmg:def.dmg,
+  };
+  // zombiesRemaining already set by spawnWave — do not override
+  document.getElementById('boss-name').textContent = def.name;
+  document.getElementById('boss-hp-bar').style.width = '100%';
+  document.getElementById('boss-bar-wrap').style.display = 'flex';
+}
+
+// Pre-compute wave zombie counts to avoid recursive Math.random() blowup
+function getZombiesForWave(w) {
+  while (waveCounts.length <= w) {
+    const prev = waveCounts[waveCounts.length - 1];
+    waveCounts.push(prev + Math.floor(Math.random() * 10) + 1);
+  }
+  return waveCounts[w];
+}
+
+function isBossWave(w) { return w % 5 === 0; }
+
+function spawnWave(w) {
+  currentBoss = null;
+  document.getElementById('boss-bar-wrap').style.display = 'none';
+  zombiesSpawnedThisWave = 0;
+
+  if (isBossWave(w)) {
+    const minionCount = 4 + Math.floor(w / 5);
+    zombiesRemaining = minionCount + 1;
+    zombiesTotalThisWave = minionCount + 1;
+    for (let i = 0; i < minionCount; i++) {
+      setTimeout(() => {
+        if (state === 'playing' && wave === w) { zombies.push(spawnZombie(w)); zombiesSpawnedThisWave++; }
+      }, i * 600);
+    }
+    setTimeout(() => {
+      if (state === 'playing' && wave === w) { spawnBossEnemy(w); zombiesSpawnedThisWave++; }
+    }, minionCount * 600 + 2000);
+  } else {
+    const count = getZombiesForWave(w);
+    zombiesRemaining = count;
+    zombiesTotalThisWave = count;
+    const groupSize = 3, groupDelay = 3000;
+    for (let i = 0; i < count; i++) {
+      const delay = Math.floor(i / groupSize) * groupDelay + (i % groupSize) * 200;
+      setTimeout(() => {
+        if (state === 'playing' && wave === w) { zombies.push(spawnZombie(w)); zombiesSpawnedThisWave++; }
+      }, delay);
+    }
+  }
+}
+
+// =====================
+// PARTICLES
+// =====================
+function spawnBlood(x, y, count) {
+  for (let i = 0; i < count; i++) {
+    const angle = Math.random()*Math.PI*2, speed = 1+Math.random()*3;
+    // Very dark red-brown so it reads as blood against green without clashing
+    const lightness = 8 + Math.random()*12;
+    particles.push({
+      x, y, vx:Math.cos(angle)*speed, vy:Math.sin(angle)*speed,
+      life:20+Math.random()*20, maxLife:40,
+      r:1.5+Math.random()*2.5,
+      color:`hsl(${355+Math.random()*10},80%,${lightness}%)`,
+    });
+  }
+  bloodPools.push({x, y, r:6+Math.random()*10, alpha:.85});
+}
+function spawnHitSpark(x, y) {
+  for (let i = 0; i < 4; i++) {
+    const angle = Math.random()*Math.PI*2;
+    particles.push({
+      x, y, vx:Math.cos(angle)*(2+Math.random()*3), vy:Math.sin(angle)*(2+Math.random()*3),
+      life:8+Math.random()*8, maxLife:16, r:1.5, color:'#ff9900',
+    });
+  }
+}
+
+function initGame() {
+  player = createPlayer();
+  bullets=[]; zombies=[]; particles=[]; bloodPools=[]; medikits=[]; gunDrops=[]; acidPools=[]; acidProjectiles=[]; hordeActive=false;
+  weaponsCollected = { shotgun:0, smg:0, rifle:0 };
+  wave=1; score=0; kills=0; frameCount=0; nextWaveTimer=0; zombiesRemaining=0; zombiesSpawnedThisWave=0; zombiesTotalThisWave=0; currentBoss=null;
+  shotsFired=0; shotsHit=0; damageTaken=0;
+  camX=0; camY=0;
+  waveCounts.length = 0; waveCounts.push(0, 10);
+  generateWorld();
+  document.getElementById('boss-bar-wrap').style.display='none';
+  spawnWave(wave);
+  updateHUD();
+}
+
+// =====================
+// UPDATE
+// =====================
+function update() {
+  frameCount++;
+
+  // Movement
+  let dx=0, dy=0;
+  if (keys['w']||keys['arrowup'])    dy-=1;
+  if (keys['s']||keys['arrowdown'])  dy+=1;
+  if (keys['a']||keys['arrowleft'])  dx-=1;
+  if (keys['d']||keys['arrowright']) dx+=1;
+  if (dx&&dy) { dx*=.707; dy*=.707; }
+  player.isMoving = (dx!==0 || dy!==0);
+  player.x = Math.max(player.r, Math.min(WORLD_W-player.r, player.x+dx*player.speed));
+  player.y = Math.max(player.r, Math.min(WORLD_H-player.r, player.y+dy*player.speed));
+  player.angle = Math.atan2((mouse.y + camY) - player.y, (mouse.x + camX) - player.x);
+
+  // Walk cycle — advances when moving
+  if (player.isMoving) player.walkCycle = (player.walkCycle + 0.18) % (Math.PI * 2);
+  // Muzzle flash countdown
+  if (player.muzzleFlash > 0) player.muzzleFlash--;
+  // Hurt vignette countdown
+  if (player.hurtFlash > 0) player.hurtFlash--;
+
+  // Update camera - centered on player, clamped to world
+  camX = Math.max(0, Math.min(WORLD_W - W, player.x - W/2));
+  camY = Math.max(0, Math.min(WORLD_H - H, player.y - H/2));
+
+  if (mouse.down) fireBullet();
+  if (player.fireTimer>0) player.fireTimer--;
+
+  if (keys['r']&&!player.reloading) startReload();
+  if (player.reloading) {
+    player.reloadTimer--;
+    const pct = 1-player.reloadTimer/player.reloadTime;
+    document.getElementById('hud-reload').textContent = `[${barStr(pct,8)}]`;
+    if (player.reloadTimer<=0) {
+      player.ammo=player.maxAmmo; player.reloading=false;
+      document.getElementById('hud-reload').textContent='READY';
+      updateAmmoUI();
+    }
+  }
+  if (player.invincible>0) player.invincible--;
+
+  // Player collision with trees and rocks
+  for (const o of worldObjects) {
+    if (!o.collision) continue;
+    const dist = Math.hypot(player.x - o.x, player.y - o.y);
+    const minDist = player.r + o.r;
+    if (dist < minDist && dist > 0) {
+      const push = (minDist - dist) / dist;
+      player.x += (player.x - o.x) * push;
+      player.y += (player.y - o.y) * push;
+      player.x = Math.max(player.r, Math.min(WORLD_W-player.r, player.x));
+      player.y = Math.max(player.r, Math.min(WORLD_H-player.r, player.y));
+    }
+  }
+
+  // Boss update
+  if (currentBoss) {
+    const b = currentBoss;
+    const angle = Math.atan2(player.y-b.y, player.x-b.x);
+    const bsx = b.x - camX, bsy = b.y - camY;
+    const bOffScreen = bsx < -50 || bsx > W+50 || bsy < -50 || bsy > H+50;
+    const bMoveSpeed = bOffScreen ? b.speed * 3 : b.speed;
+    b.x += Math.cos(angle)*bMoveSpeed;
+    b.y += Math.sin(angle)*bMoveSpeed;
+    b.angle = angle;
+    b.wobble += .08;
+    if (b.flashTimer>0) b.flashTimer--;
+
+    // Boss hits player
+    if (Math.hypot(player.x-b.x, player.y-b.y) < player.r+b.r && player.invincible===0) {
+      player.hp -= b.dmg;
+      damageTaken += b.dmg;
+      player.invincible = 35; player.hurtFlash = 20;
+      spawnBlood(player.x, player.y, 8);
+      if (player.hp<=0) { player.hp=0; gameOver(); return; }
+      updateHUD();
+    }
+
+    // Bullets hit boss - checked inside main bullet loop below
+  }
+
+  // Single bullet loop: move, check boss, check zombies
+  for (let i=bullets.length-1; i>=0; i--) {
+    const b = bullets[i];
+    b.x+=b.vx; b.y+=b.vy; b.life--;
+    if (b.life<=0||b.x<0||b.x>WORLD_W||b.y<0||b.y>WORLD_H) { bullets.splice(i,1); continue; }
+
+    // Shotgun damage falloff — full dmg within 80px, scales to 20% at 260px+
+    const shotgunFalloff = (b) => {
+      if (b.weapon !== 'shotgun') return b.damage || 20;
+      const dist = Math.hypot(b.x - b.ox, b.y - b.oy);
+      const falloffStart = 80, falloffEnd = 260;
+      if (dist <= falloffStart) return b.damage;
+      if (dist >= falloffEnd)   return Math.max(1, Math.floor(b.damage * 0.2));
+      const t = (dist - falloffStart) / (falloffEnd - falloffStart);
+      return Math.max(1, Math.floor(b.damage * (1 - t * 0.8)));
+    };
+
+    // Check boss hit
+    if (currentBoss && Math.hypot(b.x-currentBoss.x, b.y-currentBoss.y) < currentBoss.r+4) {
+      const boss = currentBoss;
+      boss.hp -= shotgunFalloff(b);
+      boss.flashTimer = 5;
+      shotsHit++;
+      spawnHitSpark(b.x, b.y);
+      bullets.splice(i,1);
+      document.getElementById('boss-hp-bar').style.width = Math.max(0, boss.hp/boss.maxHp*100)+'%';
+      if (boss.hp<=0) {
+        spawnBlood(boss.x, boss.y, 30);
+        kills++; zombiesRemaining = Math.max(0, zombiesRemaining - 1);
+        score += bossDefs[boss.bossIndex].score;
+        medikits.push({ x:boss.x, y:boss.y, heal: 10 + Math.floor(Math.random()*11), pulse:0 });
+        const wtypes = ['shotgun','smg','rifle'];
+        const dropped = wtypes[Math.floor(Math.random()*wtypes.length)];
+        gunDrops.push({ x:boss.x + 30, y:boss.y, type:dropped, pulse:0, age:0, despawning:false });
+        currentBoss = null;
+        document.getElementById('boss-bar-wrap').style.display='none';
+        updateHUD();
+      }
+      continue;
+    }
+
+    // Check zombie hits
+    let hit=false;
+    for (let j=zombies.length-1; j>=0; j--) {
+      const z = zombies[j];
+      if (z.dying) continue; // skip corpses
+      if (Math.hypot(b.x-z.x, b.y-z.y) < z.r+4) {
+        let dmg = shotgunFalloff(b);
+        // Armoured: 20% damage unless headshot (bullet above sprite centre)
+        if (z.type === 'armoured' && b.y > z.y - z.r * 0.3) dmg = Math.max(1, Math.floor(dmg * 0.2));
+        z.hp -= dmg;
+        z.flashTimer=6;
+        shotsHit++;
+        spawnHitSpark(b.x, b.y);
+        bullets.splice(i,1); hit=true;
+        if (z.hp<=0 && !z.dying) {
+          z.dying = true;
+          z.deathTimer = 18; // frames to play death animation
+          const isBig = z.type==='big' || z.type==='armoured';
+          spawnBlood(z.x, z.y, isBig?18:10);
+          kills++; zombiesRemaining = Math.max(0, zombiesRemaining - 1);
+          score += ({normal:10,big:50,spitter:30,armoured:40}[z.type]||10);
+          // Drop chance: 12% random + guaranteed every 10 kills
+          const shouldDrop = Math.random() < 0.12 || kills % 10 === 0;
+          if (shouldDrop) {
+            const wtypes = ['shotgun','smg','rifle'];
+            gunDrops.push({ x:z.x, y:z.y, type:wtypes[Math.floor(Math.random()*3)], pulse:0, age:0, despawning:false });
+          }
+          updateHUD();
+        }
+        break;
+      }
+    }
+    if (hit) continue;
+  }
+
+  // Zombie movement + player collision
+  for (let zi = zombies.length-1; zi >= 0; zi--) {
+    const z = zombies[zi];
+
+    // Death animation
+    if (z.dying) {
+      z.deathTimer--;
+      if (z.deathTimer <= 0) zombies.splice(zi, 1);
+      continue; // skip movement and collision while dying
+    }
+
+    const angle = Math.atan2(player.y-z.y, player.x-z.x);
+    const sx = z.x - camX, sy = z.y - camY;
+    const offScreen = sx < -30 || sx > W+30 || sy < -30 || sy > H+30;
+    const moveSpeed = offScreen ? z.speed * 3.5 : z.speed;
+
+    // Spitter: keep distance, spit at player
+    if (z.type === 'spitter') {
+      const dist = Math.hypot(player.x-z.x, player.y-z.y);
+      if (dist > 200) {
+        z.x += Math.cos(angle)*moveSpeed; z.y += Math.sin(angle)*moveSpeed;
+      } else if (dist < 140) {
+        z.x -= Math.cos(angle)*moveSpeed*.5; z.y -= Math.sin(angle)*moveSpeed*.5;
+      }
+      z.spitTimer--;
+      if (z.spitTimer <= 0) {
+        z.spitTimer = 120 + Math.floor(Math.random()*80);
+        const spd = 2.5 + Math.random()*.5;
+        acidProjectiles.push({ x:z.x, y:z.y, vx:Math.cos(angle)*spd, vy:Math.sin(angle)*spd-1.5, life:80 });
+      }
+    } else {
+      z.x += Math.cos(angle)*moveSpeed;
+      z.y += Math.sin(angle)*moveSpeed;
+    }
+
+    z.wobble += .12;
+    z.angle = angle;
+
+    // Push out of trees/rocks
+    for (const o of worldObjects) {
+      if (!o.collision) continue;
+      const od = Math.hypot(z.x-o.x, z.y-o.y);
+      const om = z.r + o.r;
+      if (od < om && od > 0) { const p=(om-od)/od; z.x+=(z.x-o.x)*p; z.y+=(z.y-o.y)*p; }
+    }
+
+    if (z.flashTimer>0) z.flashTimer--;
+    if (Math.hypot(player.x-z.x, player.y-z.y) < player.r+z.r && player.invincible===0) {
+      const dmg = z.dmg || 8;
+      player.hp -= dmg; damageTaken += dmg;
+      player.invincible = 25; player.hurtFlash = 15;
+      spawnBlood(player.x, player.y, 5);
+      if (player.hp<=0) { player.hp=0; gameOver(); return; }
+      updateHUD();
+    }
+  }
+
+  // Particles
+  for (let i=particles.length-1; i>=0; i--) {
+    const p=particles[i];
+    p.x+=p.vx; p.y+=p.vy; p.vx*=.88; p.vy*=.88; p.life--;
+    if (p.life<=0) particles.splice(i,1);
+  }
+
+  // Medikit pickup
+  for (let i = medikits.length-1; i>=0; i--) {
+    const m = medikits[i];
+    m.pulse += 0.08;
+    if (Math.hypot(player.x-m.x, player.y-m.y) < player.r + 12) {
+      player.hp = Math.min(player.maxHp, player.hp + m.heal);
+      medikits.splice(i, 1);
+      updateHUD();
+    }
+  }
+
+  // Gun drop pickup — show prompt when near, pick up on F key press
+  let nearbyGun = null;
+  for (let i = gunDrops.length-1; i>=0; i--) {
+    const g = gunDrops[i];
+    g.pulse += 0.07; // always advance pulse for all drops
+    g.age++;
+
+    // 30s = 1800 frames before warning, 10s = 600 frames warning then despawn
+    const WARN_AT  = 30 * 60; // 1800 frames
+    const DESPAWN_AT = 40 * 60; // 2400 frames (30s + 10s)
+    if (g.age >= WARN_AT && !g.despawning) g.despawning = true;
+    if (g.age >= DESPAWN_AT) { gunDrops.splice(i, 1); continue; }
+
+    if (nearbyGun === null && Math.hypot(player.x-g.x, player.y-g.y) < player.r + 40) {
+      nearbyGun = { g, i };
+    }
+  }
+  if (nearbyGun && keys['f']) {
+    const { g, i } = nearbyGun;
+    const w = WEAPONS[g.type];
+    player.weapon = g.type;
+    player.ammo = w.ammo;
+    player.maxAmmo = w.maxAmmo;
+    player.fireRate = w.fireRate;
+    player.reloadTime = w.reloadTime;
+    player.reloading = false;
+    player.reloadTimer = 0;
+    player.fireTimer = 0;
+    weaponsCollected[g.type] = (weaponsCollected[g.type] || 0) + 1;
+    gunDrops.splice(i, 1);
+    keys['f'] = false; // consume the keypress
+    document.getElementById('hud-weapon').textContent = w.name;
+    document.getElementById('hud-weapon').style.color = w.color;
+    document.getElementById('hud-reload').textContent = 'READY';
+    updateAmmoUI();
+  }
+
+  // Wave end — all zombies must have physically spawned AND all killed
+  const allSpawned = zombiesTotalThisWave > 0 && zombiesSpawnedThisWave >= zombiesTotalThisWave;
+  const allDead = allSpawned && zombiesRemaining === 0 && zombies.length === 0 && !currentBoss;
+  if (allDead && nextWaveTimer === 0) nextWaveTimer = 150;
+  if (nextWaveTimer > 0) {
+    nextWaveTimer--;
+    if (nextWaveTimer === 0) {
+      wave++;
+      // 30% chance of horde event between waves (starting wave 3)
+      if (wave >= 3 && Math.random() < 0.3) triggerHorde();
+      spawnWave(wave);
+      updateHUD();
+    }
+  }
+
+  // Horde warning countdown
+  if (hordeWarningTimer > 0) hordeWarningTimer--;
+
+  // Acid projectile movement
+  for (let i = acidProjectiles.length-1; i>=0; i--) {
+    const a = acidProjectiles[i];
+    a.x += a.vx; a.y += a.vy;
+    a.vy += 0.08; // gravity arc
+    a.life--;
+    if (a.life <= 0) {
+      acidPools.push({ x:a.x, y:a.y, r:18, life:300, maxLife:300 });
+      acidProjectiles.splice(i, 1);
+    }
+  }
+
+  // Acid pool damage
+  for (let i = acidPools.length-1; i>=0; i--) {
+    const a = acidPools[i];
+    a.life--;
+    if (a.life <= 0) { acidPools.splice(i, 1); continue; }
+    if (frameCount % 30 === 0 && Math.hypot(player.x-a.x, player.y-a.y) < a.r + player.r) {
+      player.hp -= 5; damageTaken += 5;
+      if (player.hp <= 0) { player.hp=0; gameOver(); return; }
+      updateHUD();
+    }
+  }
+}
+
+// =====================
+// WEAPON SPRITES
+// =====================
+// Called with ctx already translated to player center and rotated to aim angle.
+// All coords are relative to that origin — positive x = forward (toward barrel).
+function drawWeaponSprite(weapon) {
+  const r = (h,s,l) => `hsl(${h},${s}%,${l}%)`;
+
+  if (weapon === 'pistol') {
+    // Grip
+    ctx.fillStyle = '#3a2800';
+    ctx.fillRect(8, 1, 5, 9);       // grip body
+    ctx.fillStyle = '#5a3c10';
+    ctx.fillRect(9, 2, 2, 6);       // grip highlight
+    ctx.fillStyle = '#2a1800';
+    ctx.fillRect(12, 6, 1, 4);      // grip shadow
+
+    // Frame / slide
+    ctx.fillStyle = '#606060';
+    ctx.fillRect(8, -4, 20, 5);     // slide body
+    ctx.fillStyle = '#888';
+    ctx.fillRect(9, -4, 16, 2);     // slide top highlight
+    ctx.fillStyle = '#404040';
+    ctx.fillRect(9, -1, 16, 1);     // slide bottom shadow
+
+    // Ejection port
+    ctx.fillStyle = '#303030';
+    ctx.fillRect(14, -3, 6, 2);
+
+    // Barrel
+    ctx.fillStyle = '#505050';
+    ctx.fillRect(28, -3, 4, 3);     // barrel extension
+    ctx.fillStyle = '#222';
+    ctx.fillRect(31, -2, 1, 1);     // muzzle hole
+
+    // Front & rear sights
+    ctx.fillStyle = '#ddd';
+    ctx.fillRect(10, -5, 2, 1);     // rear sight
+    ctx.fillRect(26, -5, 2, 1);     // front sight
+
+    // Trigger guard + trigger
+    ctx.fillStyle = '#505050';
+    ctx.fillRect(10, 0, 6, 1);
+    ctx.fillStyle = '#888';
+    ctx.fillRect(13, 1, 1, 3);
+
+  } else if (weapon === 'shotgun') {
+    // Stock
+    ctx.fillStyle = '#5a2e0a';
+    ctx.fillRect(-6, -2, 14, 7);    // wood stock body
+    ctx.fillStyle = '#7a4a1a';
+    ctx.fillRect(-5, -1, 10, 2);    // stock highlight
+    ctx.fillStyle = '#3a1a00';
+    ctx.fillRect(-5, 4, 12, 1);     // stock shadow
+
+    // Receiver
+    ctx.fillStyle = '#484848';
+    ctx.fillRect(8, -3, 10, 7);     // receiver body
+    ctx.fillStyle = '#686868';
+    ctx.fillRect(9, -3, 7, 2);      // receiver highlight
+    ctx.fillStyle = '#282828';
+    ctx.fillRect(9, 3, 8, 1);       // receiver shadow
+
+    // Pump foregrip
+    ctx.fillStyle = '#6a3810';
+    ctx.fillRect(18, 0, 8, 5);
+    ctx.fillStyle = '#8a5820';
+    ctx.fillRect(19, 0, 5, 2);
+
+    // Long twin barrels
+    ctx.fillStyle = '#585858';
+    ctx.fillRect(18, -5, 22, 3);    // top barrel
+    ctx.fillStyle = '#686868';
+    ctx.fillRect(19, -5, 18, 1);    // barrel highlight
+    ctx.fillStyle = '#484848';
+    ctx.fillRect(18, -3, 22, 2);    // bottom barrel
+
+    // Muzzle
+    ctx.fillStyle = '#303030';
+    ctx.fillRect(38, -6, 3, 5);
+    ctx.fillStyle = '#111';
+    ctx.fillRect(39, -5, 1, 3);     // barrel holes
+
+    // Trigger guard
+    ctx.fillStyle = '#404040';
+    ctx.fillRect(10, 1, 6, 1);
+    ctx.fillStyle = '#666';
+    ctx.fillRect(13, 2, 1, 3);
+
+  } else if (weapon === 'smg') {
+    // Grip
+    ctx.fillStyle = '#1a1a2a';
+    ctx.fillRect(4, 1, 6, 10);      // grip
+    ctx.fillStyle = '#2a2a3a';
+    ctx.fillRect(5, 2, 3, 7);       // grip highlight
+    ctx.fillStyle = '#0a0a18';
+    ctx.fillRect(9, 3, 1, 6);       // grip shadow
+
+    // Magazine (large, sticking down)
+    ctx.fillStyle = '#222230';
+    ctx.fillRect(6, 6, 5, 8);
+    ctx.fillStyle = '#333345';
+    ctx.fillRect(7, 7, 2, 6);
+    ctx.fillStyle = '#c8952a';
+    ctx.fillRect(8, 13, 2, 1);      // bullet tip visible
+
+    // Body / receiver
+    ctx.fillStyle = '#2a2a3a';
+    ctx.fillRect(4, -4, 22, 6);     // main body
+    ctx.fillStyle = '#3a3a4a';
+    ctx.fillRect(5, -4, 18, 2);     // body top highlight
+    ctx.fillStyle = '#141420';
+    ctx.fillRect(5, 1, 20, 1);      // body bottom shadow
+
+    // Short barrel
+    ctx.fillStyle = '#383848';
+    ctx.fillRect(26, -3, 8, 4);
+    ctx.fillStyle = '#484858';
+    ctx.fillRect(27, -3, 5, 1);
+    ctx.fillStyle = '#111';
+    ctx.fillRect(33, -2, 1, 2);     // muzzle
+
+    // Charging handle
+    ctx.fillStyle = '#555565';
+    ctx.fillRect(18, -5, 3, 2);
+
+    // Sights
+    ctx.fillStyle = '#f00';
+    ctx.fillRect(7, -5, 1, 1);      // rear red dot
+    ctx.fillRect(24, -5, 1, 1);     // front red dot
+
+    // Trigger
+    ctx.fillStyle = '#444454';
+    ctx.fillRect(6, 0, 5, 1);
+    ctx.fillStyle = '#666676';
+    ctx.fillRect(9, 1, 1, 3);
+
+  } else if (weapon === 'rifle') {
+    // Long wooden stock
+    ctx.fillStyle = '#6a3010';
+    ctx.fillRect(-8, -1, 16, 6);    // stock body
+    ctx.fillStyle = '#8a5020';
+    ctx.fillRect(-7, -1, 12, 2);    // stock top highlight
+    ctx.fillStyle = '#3a1800';
+    ctx.fillRect(-7, 4, 14, 1);     // stock shadow
+    ctx.fillStyle = '#5a2808';
+    ctx.fillRect(6, 1, 3, 4);       // cheekpiece
+
+    // Receiver
+    ctx.fillStyle = '#383838';
+    ctx.fillRect(8, -3, 12, 7);
+    ctx.fillStyle = '#545454';
+    ctx.fillRect(9, -3, 9, 2);
+    ctx.fillStyle = '#202020';
+    ctx.fillRect(9, 3, 10, 1);
+
+    // Scope!
+    ctx.fillStyle = '#222';
+    ctx.fillRect(10, -7, 14, 4);    // scope body
+    ctx.fillStyle = '#333';
+    ctx.fillRect(11, -7, 11, 2);    // scope highlight
+    ctx.fillStyle = '#4af';
+    ctx.fillRect(11, -6, 2, 2);     // scope lens (blue tint)
+    ctx.fillStyle = '#08f';
+    ctx.fillRect(12, -6, 1, 1);     // lens glint
+    ctx.fillStyle = '#111';
+    ctx.fillRect(21, -6, 2, 2);     // rear lens
+    // Scope mounts
+    ctx.fillStyle = '#555';
+    ctx.fillRect(12, -3, 2, 1);
+    ctx.fillRect(19, -3, 2, 1);
+
+    // Long barrel
+    ctx.fillStyle = '#484848';
+    ctx.fillRect(20, -3, 24, 4);
+    ctx.fillStyle = '#606060';
+    ctx.fillRect(21, -3, 20, 1);    // barrel highlight
+    ctx.fillStyle = '#282828';
+    ctx.fillRect(21, 0, 22, 1);     // barrel underside
+
+    // Muzzle brake
+    ctx.fillStyle = '#303030';
+    ctx.fillRect(42, -4, 4, 6);
+    ctx.fillStyle = '#555';
+    ctx.fillRect(43, -3, 2, 1);
+    ctx.fillRect(43, 1, 2, 1);
+    ctx.fillStyle = '#111';
+    ctx.fillRect(45, -2, 1, 2);     // muzzle
+
+    // Trigger guard + trigger
+    ctx.fillStyle = '#404040';
+    ctx.fillRect(10, 1, 8, 1);
+    ctx.fillStyle = '#666';
+    ctx.fillRect(15, 2, 1, 3);
+
+    // Bolt handle
+    ctx.fillStyle = '#555';
+    ctx.fillRect(18, -4, 2, 2);
+    ctx.fillRect(20, -5, 1, 1);
+  }
+}
+
+// =====================
+// DRAW
+// =====================
+function draw() {
+  ctx.clearRect(0,0,W,H);
+
+  // Grid scrolls with camera
+  ctx.strokeStyle='#0e1e0e'; ctx.lineWidth=1;
+  const gx = -(camX % 40), gy = -(camY % 40);
+  for (let x=gx; x<W; x+=40) { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,H); ctx.stroke(); }
+  for (let y=gy; y<H; y+=40) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke(); }
+
+  if (state==='menu') return;
+
+  // World border visible when near edge
+  ctx.save();
+  ctx.strokeStyle='#3a0000'; ctx.lineWidth=4;
+  ctx.strokeRect(-camX, -camY, WORLD_W, WORLD_H);
+  ctx.restore();
+
+  // Apply camera transform for all world objects
+  ctx.save();
+  ctx.translate(-camX, -camY);
+
+  // Blood pools
+  for (const bp of bloodPools) {
+    ctx.save();
+    // Outer dark ring
+    ctx.globalAlpha = bp.alpha * 0.6;
+    ctx.fillStyle = '#1a0000';
+    ctx.beginPath(); ctx.ellipse(bp.x, bp.y, bp.r*1.9, bp.r*1.1, 0, 0, Math.PI*2); ctx.fill();
+    // Inner pool — very dark maroon so it doesn't glow red on green
+    ctx.globalAlpha = bp.alpha * 0.8;
+    ctx.fillStyle = '#2a0000';
+    ctx.beginPath(); ctx.ellipse(bp.x, bp.y, bp.r*1.4, bp.r*0.8, 0, 0, Math.PI*2); ctx.fill();
+    ctx.restore();
+  }
+
+  // Particles
+  for (const p of particles) {
+    ctx.save(); ctx.globalAlpha=p.life/p.maxLife; ctx.fillStyle=p.color;
+    ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,Math.PI*2); ctx.fill(); ctx.restore();
+  }
+
+  // Bushes (background — no collision, drawn under everything)
+  for (const o of worldObjects) {
+    if (o.type !== 'bush') continue;
+    const sx = o.x - camX, sy = o.y - camY;
+    if (sx < -80 || sx > W+80 || sy < -80 || sy > H+80) continue;
+    const inBush = Math.hypot(player.x - o.x, player.y - o.y) < o.r + player.r + 4;
+    drawForestSprite(bushSprites[o.idx], o.x, o.y, BUSH_SCALE, inBush ? 0.35 : 0.9);
+  }
+
+  // Medikits
+  for (const m of medikits) {
+    const glow = 0.5 + Math.sin(m.pulse) * 0.3;
+    ctx.save();
+    ctx.shadowBlur=14; ctx.shadowColor=`rgba(0,255,80,${glow})`;
+    ctx.fillStyle='#1a3a1a';
+    ctx.fillRect(m.x-10, m.y-10, 20, 20);
+    ctx.strokeStyle=`rgba(0,220,80,${glow+0.3})`; ctx.lineWidth=1.5;
+    ctx.strokeRect(m.x-10, m.y-10, 20, 20);
+    ctx.fillStyle=`rgba(0,255,80,${glow+0.4})`;
+    ctx.fillRect(m.x-2, m.y-7, 4, 14);
+    ctx.fillRect(m.x-7, m.y-2, 14, 4);
+    ctx.restore();
+    ctx.save(); ctx.globalAlpha=0.7; ctx.fillStyle='#39ff14';
+    ctx.font='bold 8px monospace'; ctx.textAlign='center';
+    ctx.fillText(`+${m.heal}`, m.x, m.y+20); ctx.restore();
+  }
+
+  // Gun drops
+  for (const g of gunDrops) {
+    const w = WEAPONS[g.type];
+    const glow = 0.5 + Math.sin(g.pulse) * 0.35;
+    const col = w.color;
+
+    // During despawn warning: flash rapidly and fade out
+    let baseAlpha = 1;
+    if (g.despawning) {
+      const WARN_AT   = 30 * 60;
+      const DESPAWN_AT = 40 * 60;
+      const t = (g.age - WARN_AT) / (DESPAWN_AT - WARN_AT); // 0→1 over 10s
+      // Fast flicker — visible every other ~10 frames, getting faster
+      const flickerRate = 4 + Math.floor(t * 16);
+      const flickerOn = Math.floor(g.age / flickerRate) % 2 === 0;
+      baseAlpha = flickerOn ? (1 - t * 0.6) : 0.1;
+    }
+    ctx.save();
+    // Outer glow ring — large and pulsing so it's impossible to miss
+    ctx.globalAlpha = glow * 0.4 * baseAlpha;
+    ctx.shadowBlur = 30; ctx.shadowColor = col;
+    ctx.strokeStyle = col; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.arc(g.x, g.y, 20, 0, Math.PI*2); ctx.stroke();
+    // Backing box
+    ctx.shadowBlur = 20;
+    ctx.fillStyle = '#0a0a14';
+    ctx.strokeStyle = col; ctx.lineWidth = 2;
+    ctx.globalAlpha = 0.92 * baseAlpha;
+    ctx.fillRect(g.x-16, g.y-12, 32, 24);
+    ctx.strokeRect(g.x-16, g.y-12, 32, 24);
+    // Gun silhouette
+    ctx.globalAlpha = (glow + 0.2) * baseAlpha;
+    ctx.fillStyle = col;
+    if (g.type === 'shotgun') {
+      ctx.fillRect(g.x-12, g.y-2, 22, 5);
+      ctx.fillRect(g.x-12, g.y+3,  9, 5);
+      ctx.fillRect(g.x+6,  g.y-5,  5, 3);
+    } else if (g.type === 'smg') {
+      ctx.fillRect(g.x-12, g.y-4, 16, 6);
+      ctx.fillRect(g.x-4,  g.y+2,  5, 6);
+      ctx.fillRect(g.x+4,  g.y-4,  8, 4);
+      ctx.fillRect(g.x-9,  g.y+2,  4, 4);
+    } else {
+      ctx.fillRect(g.x-14, g.y-2, 26, 4);
+      ctx.fillRect(g.x-14, g.y+2, 10, 5);
+      ctx.fillRect(g.x-4,  g.y+2,  5, 6);
+      ctx.fillRect(g.x-2,  g.y-5,  4, 3);
+    }
+    ctx.restore();
+    // Weapon name label
+    ctx.save(); ctx.globalAlpha = 0.95 * baseAlpha; ctx.fillStyle = col;
+    ctx.font = 'bold 8px monospace'; ctx.textAlign = 'center';
+    ctx.fillText(w.name, g.x, g.y + 24); ctx.restore();
+
+    // [F] prompt when player is near
+    if (Math.hypot(player.x-g.x, player.y-g.y) < player.r + 40) {
+      const pulse = 0.7 + Math.sin(g.pulse * 2) * 0.3;
+      ctx.save();
+      ctx.globalAlpha = pulse;
+      // Background pill
+      ctx.fillStyle = '#000000cc';
+      ctx.beginPath();
+      ctx.roundRect(g.x - 28, g.y - 30, 56, 14, 4);
+      ctx.fill();
+      // Border
+      ctx.strokeStyle = col;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.roundRect(g.x - 28, g.y - 30, 56, 14, 4);
+      ctx.stroke();
+      // Key box [F]
+      ctx.fillStyle = col;
+      ctx.fillRect(g.x - 26, g.y - 28, 10, 10);
+      ctx.fillStyle = '#000';
+      ctx.font = 'bold 7px monospace';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('F', g.x - 21, g.y - 23);
+      // "Pick up" text
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '7px monospace';
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('Pick up', g.x - 13, g.y - 23);
+      ctx.restore();
+    }
+  }
+
+  // Acid pools (drawn under everything else)
+  for (const a of acidPools) {
+    const alpha = (a.life / a.maxLife) * 0.55;
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = '#88dd00';
+    ctx.shadowBlur = 8; ctx.shadowColor = '#aaff00';
+    ctx.beginPath(); ctx.ellipse(a.x, a.y, a.r * 1.4, a.r * 0.7, 0, 0, Math.PI*2); ctx.fill();
+    ctx.globalAlpha = alpha * 0.6;
+    ctx.fillStyle = '#ccff00';
+    ctx.beginPath(); ctx.ellipse(a.x - 3, a.y - 2, a.r * 0.6, a.r * 0.3, 0, 0, Math.PI*2); ctx.fill();
+    ctx.restore();
+  }
+
+  // Acid projectiles
+  for (const a of acidProjectiles) {
+    ctx.save();
+    ctx.globalAlpha = 0.9;
+    ctx.fillStyle = '#aaee00';
+    ctx.shadowBlur = 6; ctx.shadowColor = '#88ff00';
+    ctx.beginPath(); ctx.arc(a.x, a.y, 4, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = '#eeff88';
+    ctx.beginPath(); ctx.arc(a.x - 1, a.y - 1, 1.5, 0, Math.PI*2); ctx.fill();
+    ctx.restore();
+  }
+
+  // Regular zombies (+ death animations)
+  for (const z of zombies) {
+    const facingLeft = Math.cos(z.angle) < 0;
+    let sprite, flashSprite, scale = SCALE;
+
+    if (z.type === 'spitter') {
+      sprite = spitterSprite; flashSprite = spitterFlash;
+    } else if (z.type === 'armoured') {
+      sprite = armouredSprite; flashSprite = armouredFlash;
+    } else if (z.type === 'big') {
+      sprite = bigZombieSprite; flashSprite = bigZombieFlash;
+    } else {
+      const si = z.skinIdx || 0;
+      sprite = zombieSprites[si]; flashSprite = zombieFlashes[si];
+    }
+
+    // Death crumple animation
+    if (z.dying) {
+      const t = 1 - z.deathTimer / 18; // 0→1 as dying progresses
+      ctx.save();
+      ctx.translate(z.x, z.y);
+      ctx.rotate(t * Math.PI * 0.6 * (facingLeft ? -1 : 1)); // fall sideways
+      ctx.scale(1 - t * 0.3, 1 - t * 0.4); // shrink/crumple
+      ctx.globalAlpha = 1 - t * 0.7;
+      drawSprite(sprite, 0, 0, facingLeft, 1, scale);
+      ctx.restore();
+      continue; // skip normal draw below
+    }
+
+    const drawSprite_ = z.flashTimer > 0 ? flashSprite : sprite;
+    const bobY = Math.sin(z.wobble * 2) * 1.5;
+    const tilt = Math.sin(z.wobble) * 0.08;
+
+    ctx.save();
+    ctx.translate(z.x, z.y + bobY);
+    ctx.rotate(tilt);
+    drawSprite(drawSprite_, 0, 0, facingLeft, 1, scale);
+    ctx.restore();
+
+    // Crawler blood trail removed (crawler removed)
+
+    // Spitter: glowing eyes + acid belly glow
+    if (z.type === 'spitter' && z.flashTimer === 0) {
+      const acidGlow = 0.3 + Math.sin(z.wobble * 3) * 0.2;
+      ctx.save();
+      ctx.globalAlpha = 0.8 + Math.sin(z.wobble*4)*0.2;
+      ctx.shadowBlur = 8; ctx.shadowColor = '#eeff00';
+      ctx.fillStyle = '#eeff44';
+      const ex = facingLeft ? z.x + 3 : z.x - 3;
+      ctx.beginPath(); ctx.arc(ex - 2, z.y - 6, 1.5, 0, Math.PI*2); ctx.fill();
+      ctx.beginPath(); ctx.arc(ex + 2, z.y - 6, 1.5, 0, Math.PI*2); ctx.fill();
+      ctx.globalAlpha = acidGlow;
+      ctx.shadowBlur = 12; ctx.shadowColor = '#88ff00';
+      ctx.fillStyle = '#ccff00';
+      ctx.beginPath(); ctx.ellipse(z.x, z.y + 2, 8, 5, 0, 0, Math.PI*2); ctx.fill();
+      ctx.globalAlpha = acidGlow * 0.8;
+      ctx.beginPath(); ctx.arc(z.x - 4, z.y + 9, 2.5, 0, Math.PI*2); ctx.fill();
+      ctx.beginPath(); ctx.arc(z.x + 3, z.y + 10, 1.8, 0, Math.PI*2); ctx.fill();
+      ctx.restore();
+    }
+
+    // Armoured: headshot zone dashed ring
+    if (z.type === 'armoured') {
+      ctx.save();
+      ctx.globalAlpha = 0.45;
+      ctx.strokeStyle = '#aaaaaa';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([2,2]);
+      ctx.beginPath();
+      ctx.arc(z.x, z.y - z.r * 0.5, z.r * 0.6, 0, Math.PI*2);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // Spitter: spit charge ring
+    if (z.type === 'spitter' && z.spitTimer < 40) {
+      const charge = 1 - z.spitTimer / 40;
+      ctx.save();
+      ctx.globalAlpha = charge * 0.8;
+      ctx.fillStyle = '#aadd00';
+      ctx.shadowBlur = 8; ctx.shadowColor = '#88ff00';
+      ctx.beginPath(); ctx.arc(z.x, z.y, 5 + charge * 4, 0, Math.PI*2); ctx.fill();
+      ctx.restore();
+    }
+
+    // HP bar
+    if (z.hp < z.maxHp) {
+      const bw = z.r * 2.5;
+      ctx.fillStyle = '#300';
+      ctx.fillRect(z.x - bw/2, z.y - z.r - 10, bw, 4);
+      const hpCol = z.type === 'armoured' ? '#aaaaaa' : z.type === 'spitter' ? '#88dd00' : '#c0392b';
+      ctx.fillStyle = hpCol;
+      ctx.fillRect(z.x - bw/2, z.y - z.r - 10, bw * (z.hp / z.maxHp), 4);
+    }
+  }
+
+  // Boss
+  if (currentBoss) {
+    const b=currentBoss, def=bossDefs[b.bossIndex];
+    ctx.save(); ctx.shadowBlur=30; ctx.shadowColor='#ff000088';
+    ctx.translate(b.x, b.y+Math.sin(b.wobble*2)*2);
+    ctx.rotate(Math.sin(b.wobble)*.06);
+    drawSprite(b.flashTimer>0?def.flash:def.sprite,0,0,Math.cos(b.angle)<0,1,SCALE*1.5);
+    ctx.restore();
+    const bw=b.r*4;
+    ctx.fillStyle='#300'; ctx.fillRect(b.x-bw/2,b.y-b.r-16,bw,6);
+    ctx.fillStyle='#ff3d2e'; ctx.fillRect(b.x-bw/2,b.y-b.r-16,bw*(b.hp/b.maxHp),6);
+    ctx.strokeStyle='#ff0000'; ctx.lineWidth=1; ctx.strokeRect(b.x-bw/2,b.y-b.r-16,bw,6);
+  }
+
+  // Bullets — drawn as elongated brass projectiles
+  for (const b of bullets) {
+    const alpha = b.life / 55;
+    const ang = b.angle;
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.translate(b.x, b.y);
+    ctx.rotate(ang);
+
+    // Motion trail (faint white streak behind)
+    ctx.globalAlpha = alpha * 0.3;
+    ctx.strokeStyle = '#fffde0';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(-14, 0);
+    ctx.lineTo(-4, 0);
+    ctx.stroke();
+
+    // Brass casing body
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = '#c8952a';
+    ctx.beginPath();
+    ctx.ellipse(-1, 0, 5, 2, 0, 0, Math.PI*2);
+    ctx.fill();
+
+    // Lighter brass highlight
+    ctx.fillStyle = '#e8b840';
+    ctx.beginPath();
+    ctx.ellipse(-2, -0.5, 3, 1, 0, 0, Math.PI*2);
+    ctx.fill();
+
+    // Dark lead tip
+    ctx.fillStyle = '#2a2a2a';
+    ctx.beginPath();
+    ctx.moveTo(4, 0);
+    ctx.lineTo(7, -1.2);
+    ctx.lineTo(7, 1.2);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.restore();
+  }
+
+  // Player
+  if (player) {
+    const facingLeft = Math.cos(player.angle) < 0;
+    const flicker = player.invincible>0 && Math.floor(frameCount/3)%2===0;
+    const alpha = flicker ? 0.35 : 1;
+    const lc = player.walkCycle;
+
+    // Vertical bob — bounces up and down with each step
+    const bobY = player.isMoving
+      ? Math.abs(Math.sin(lc)) * -3          // lifts on each step peak
+      : Math.sin(frameCount * 0.04) * 0.7;   // idle breath
+
+    // Slight horizontal sway — rocks side to side opposite to bob
+    const swayX = player.isMoving ? Math.sin(lc) * 1.2 : 0;
+
+    // Body tilt — leans slightly forward/back in walking direction
+    const tilt = player.isMoving ? Math.sin(lc) * 0.06 : 0;
+
+    // Draw full sprite as one piece — no splitting
+    ctx.save();
+    ctx.translate(player.x + (facingLeft ? -swayX : swayX), player.y + bobY);
+    ctx.rotate(tilt);
+    ctx.scale(facingLeft ? -1 : 1, 1);
+    ctx.globalAlpha = alpha;
+    ctx.drawImage(playerSprite, -SZ*SCALE/2, -SZ*SCALE/2, SZ*SCALE, SZ*SCALE);
+    ctx.restore();
+
+    // Weapon
+    if (!flicker) {
+      ctx.save();
+      ctx.translate(player.x + (facingLeft ? -swayX : swayX), player.y + bobY);
+      ctx.rotate(player.angle);
+      drawWeaponSprite(player.weapon);
+
+      // Muzzle flash
+      if (player.muzzleFlash > 0) {
+        const mf = player.muzzleFlash / 4;
+        const barrelEnd = player.weapon === 'rifle' ? 48 : player.weapon === 'shotgun' ? 42 : player.weapon === 'smg' ? 36 : 32;
+        ctx.save();
+        ctx.globalAlpha = mf * 0.9;
+        // Outer flash bloom
+        ctx.fillStyle = '#ffee88';
+        ctx.shadowBlur = 16; ctx.shadowColor = '#ffaa00';
+        ctx.beginPath(); ctx.arc(barrelEnd, 0, 5 * mf, 0, Math.PI*2); ctx.fill();
+        // Inner bright core
+        ctx.globalAlpha = mf;
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath(); ctx.arc(barrelEnd, 0, 2 * mf, 0, Math.PI*2); ctx.fill();
+        // Side petals
+        ctx.globalAlpha = mf * 0.6;
+        ctx.fillStyle = '#ffcc44';
+        ctx.beginPath(); ctx.ellipse(barrelEnd + 4, 0, 7 * mf, 2 * mf, 0, 0, Math.PI*2); ctx.fill();
+        ctx.beginPath(); ctx.ellipse(barrelEnd, -4, 2 * mf, 5 * mf, 0, 0, Math.PI*2); ctx.fill();
+        ctx.restore();
+      }
+      ctx.restore();
+    }
+  }
+
+  // Trees and rocks (foreground — drawn over player for depth)
+  for (const o of worldObjects) {
+    if (o.type === 'bush') continue;
+    const sx = o.x - camX, sy = o.y - camY;
+    if (sx < -120 || sx > W+120 || sy < -120 || sy > H+120) continue;
+    if (o.type === 'tree') {
+      drawForestSprite(treeSprites[o.idx], o.x, o.y, TREE_SCALE, 1);
+    } else {
+      drawForestSprite(rockSprites[o.idx], o.x, o.y, ROCK_SCALE, 1);
+    }
+  }
+
+  // Pop camera transform
+  ctx.restore();
+
+  // Hurt vignette — red edges when taking damage
+  if (player && player.hurtFlash > 0) {
+    const vt = player.hurtFlash / 20;
+    const grad = ctx.createRadialGradient(W/2, H/2, H*0.3, W/2, H/2, H*0.85);
+    grad.addColorStop(0, 'rgba(180,0,0,0)');
+    grad.addColorStop(1, `rgba(180,0,0,${vt * 0.7})`);
+    ctx.save();
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, W, H);
+    ctx.restore();
+  }
+
+  // Horde warning — screen space overlay
+  if (hordeWarningTimer > 0) {
+    const t = hordeWarningTimer;
+    const alpha = t > 120 ? 1 : t / 120;
+    ctx.save();
+    ctx.globalAlpha = alpha * 0.85;
+    ctx.fillStyle = '#cc2200';
+    ctx.fillRect(0, H/2 - 22, W, 44);
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 18px "Oswald", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.letterSpacing = '4px';
+    ctx.fillText('⚠  HORDE INCOMING  ⚠', W/2, H/2);
+    ctx.restore();
+  }
+
+  // Crosshair — screen space, no camera offset
+  ctx.save(); ctx.strokeStyle='rgba(255,80,80,.8)'; ctx.lineWidth=1;
+  const cx=mouse.x, cy=mouse.y, cs=10;
+  ctx.beginPath();
+  ctx.moveTo(cx-cs,cy); ctx.lineTo(cx-4,cy);
+  ctx.moveTo(cx+4,cy);  ctx.lineTo(cx+cs,cy);
+  ctx.moveTo(cx,cy-cs); ctx.lineTo(cx,cy-4);
+  ctx.moveTo(cx,cy+4);  ctx.lineTo(cx,cy+cs);
+  ctx.stroke(); ctx.beginPath(); ctx.arc(cx,cy,3,0,Math.PI*2); ctx.stroke();
+  ctx.restore();
+}
+
+// =====================
+// HUD
+// =====================
+function updateHUD() {
+  document.getElementById('hud-wave').textContent  = wave;
+  document.getElementById('hud-score').textContent = score;
+  document.getElementById('hud-kills').textContent = kills;
+  document.getElementById('hud-hp').textContent    = player.hp;
+  document.getElementById('health-bar').style.width = (player.hp/player.maxHp*100)+'%';
+  updateAmmoUI();
+}
+function updateAmmoUI() {
+  document.getElementById('hud-ammo').textContent = player.ammo;
+  const w = WEAPONS[player.weapon];
+  const weapEl = document.getElementById('hud-weapon');
+  weapEl.textContent = w.name;
+  weapEl.style.color = w.color;
+  const pips = document.getElementById('ammo-pips');
+  pips.innerHTML='';
+  const pipCount = Math.min(player.maxAmmo, 30); // cap pips at 30 so SMG doesn't overflow
+  for (let i=0;i<pipCount;i++) {
+    const d=document.createElement('div');
+    d.className='pip'+(i>=player.ammo?' empty':'');
+    pips.appendChild(d);
+  }
+}
+function barStr(pct,len) {
+  const f=Math.round(pct*len);
+  return '█'.repeat(f)+'░'.repeat(len-f);
+}
+
+// =====================
+// GAME OVER / START
+// =====================
+function gameOver() {
+  state='dead';
+  document.getElementById('overlay-title').textContent='☠ YOU DIED';
+  document.getElementById('overlay-msg').textContent=`Wave ${wave} — Score: ${score} — Kills: ${kills}`;
+  document.getElementById('overlay-btn').textContent='TRY AGAIN';
+  document.getElementById('overlay').style.display='flex';
+}
+function startGame() {
+  state='playing';
+  document.getElementById('overlay').style.display='none';
+  initGame();
+}
+
+// =====================
+// PAUSE MENU
+// =====================
+let pauseTab = 'resume';
+
+function togglePause() {
+  if (state === 'playing') {
+    state = 'paused';
+    mouse.down = false;
+    document.getElementById('pause-overlay').classList.add('active');
+    showPauseTab('resume');
+  } else if (state === 'paused') {
+    resumeGame();
+  }
+}
+
+function resumeGame() {
+  state = 'playing';
+  document.getElementById('pause-overlay').classList.remove('active');
+}
+
+function showPauseTab(tab) {
+  pauseTab = tab;
+  document.querySelectorAll('.pause-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.pause-tab').forEach(t => {
+    if (t.textContent.toLowerCase() === tab) t.classList.add('active');
+  });
+  const content = document.getElementById('pause-content');
+  if (tab === 'resume') {
+    const acc = shotsFired > 0 ? Math.round(shotsHit / shotsFired * 100) : 0;
+    content.innerHTML = `
+      <button class="pause-btn" onclick="resumeGame()">▶ RESUME</button>
+      <div style="color:#444;font-size:.65rem;letter-spacing:.1em;margin-top:4px">ESC TO RESUME</div>
+      <button class="pause-btn ghost" style="margin-top:12px" onclick="backToLobby()">↩ BACK TO LOBBY</button>
+    `;
+  } else if (tab === 'stats') {
+    const acc = shotsFired > 0 ? Math.round(shotsHit / shotsFired * 100) : 0;
+    const timeSec = Math.floor(frameCount / 60);
+    const mins = Math.floor(timeSec / 60), secs = timeSec % 60;
+    const timeStr = `${mins}:${secs.toString().padStart(2,'0')}`;
+    content.innerHTML = `
+      <div class="stat-row"><span>Wave Reached</span><span>${wave}</span></div>
+      <div class="stat-row"><span>Score</span><span>${score}</span></div>
+      <div class="stat-row"><span>Kills</span><span>${kills}</span></div>
+      <div class="stat-row highlight"><span>Accuracy</span><span>${acc}%</span></div>
+      <div class="stat-row"><span>Shots Fired</span><span>${shotsFired}</span></div>
+      <div class="stat-row"><span>Shots Hit</span><span>${shotsHit}</span></div>
+      <div class="stat-row"><span>Damage Taken</span><span>${damageTaken}</span></div>
+      <div class="stat-row"><span>Time Alive</span><span>${timeStr}</span></div>
+    `;
+  } else if (tab === 'controls') {
+    content.innerHTML = `
+      <div id="controls-table">
+        <div class="ctrl-row"><span>Move</span><span>WASD / ARROWS</span></div>
+        <div class="ctrl-row"><span>Aim</span><span>MOUSE</span></div>
+        <div class="ctrl-row"><span>Shoot</span><span>LEFT CLICK</span></div>
+        <div class="ctrl-row"><span>Reload</span><span>R</span></div>
+        <div class="ctrl-row"><span>Pick up weapon</span><span>F</span></div>
+        <div class="ctrl-row"><span>Pause</span><span>ESC</span></div>
+      </div>
+    `;
+  } else if (tab === 'weapons') {
+    const rows = [
+      { key:'pistol',  icon:'🔘', desc:'Semi-auto sidearm. Balanced and reliable.',   stats:'15 rds  |  DMG 20  |  Tight spread' },
+      { key:'shotgun', icon:'🟠', desc:'Pump-action. Devastating at close range.',     stats:'6 shells |  DMG 15×6 |  Wide spread' },
+      { key:'smg',     icon:'🔵', desc:'Full-auto SMG. Sprays bullets fast.',          stats:'35 rds  |  DMG 10  |  Med spread'  },
+      { key:'rifle',   icon:'🔴', desc:'Bolt-action rifle. High damage, low spread.',  stats:'10 rds  |  DMG 40  |  Near zero'   },
+    ];
+    const weaponRows = rows.map(r => {
+      const w = WEAPONS[r.key];
+      const count = r.key === 'pistol' ? '— (starting weapon)' : `Picked up: <span style="color:${w.color};font-family:'Oswald',sans-serif">${weaponsCollected[r.key] || 0}×</span>`;
+      return `
+        <div style="width:280px;padding:8px 0;border-bottom:1px solid #1e1e1e;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px">
+            <span style="color:${w.color};font-family:'Oswald',sans-serif;font-size:.95rem;letter-spacing:.1em">${r.icon} ${w.name}</span>
+            <span style="font-size:.65rem;color:#666">${count}</span>
+          </div>
+          <div style="font-size:.62rem;color:#888;margin-bottom:2px">${r.desc}</div>
+          <div style="font-size:.6rem;color:#555">${r.stats}</div>
+        </div>`;
+    }).join('');
+    content.innerHTML = `<div style="width:280px">${weaponRows}</div>`;
+  }
+}
+
+function backToLobby() {
+  state = 'menu';
+  document.getElementById('pause-overlay').classList.remove('active');
+  document.getElementById('overlay-title').textContent = 'DEADZONE';
+  document.getElementById('overlay-msg').textContent = 'Survive as long as you can.';
+  document.getElementById('overlay-btn').textContent = 'START GAME';
+  document.getElementById('overlay').style.display = 'flex';
+  document.getElementById('boss-bar-wrap').style.display = 'none';
+  currentBoss = null;
+}
+
+
+window.addEventListener('keydown', e => {
+  if (e.key === 'Escape') { if (state==='playing'||state==='paused') togglePause(); return; }
+  keys[e.key.toLowerCase()]=true;
+  if (e.key.toLowerCase()==='r'&&state==='playing') startReload();
+  if (e.key.toLowerCase()==='f'&&state==='playing') keys['f']=true;
+  e.preventDefault();
+});
+window.addEventListener('keyup', e => { keys[e.key.toLowerCase()]=false; });
+canvas.addEventListener('mousemove', e => {
+  const r=canvas.getBoundingClientRect();
+  mouse.x=e.clientX-r.left; mouse.y=e.clientY-r.top;
+});
+canvas.addEventListener('mousedown', e => { if(e.button===0) mouse.down=true; });
+canvas.addEventListener('mouseup',   e => { if(e.button===0) mouse.down=false; });
+canvas.addEventListener('contextmenu', e => e.preventDefault());
+document.getElementById('overlay-btn').addEventListener('click', startGame);
+
+// =====================
+// LOOP
+// =====================
+function loop() {
+  if (state==='playing') update();
+  draw();
+  requestAnimationFrame(loop);
+}
+loop();
+</script>
+</body>
+</html>

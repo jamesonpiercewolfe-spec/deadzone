@@ -92,6 +92,19 @@ body{display:flex;align-items:center;justify-content:center;font-family:'Share T
 @keyframes dp{0%,100%{opacity:.25;transform:scale(1);}50%{opacity:.85;transform:scale(1.4);}}
 .soon-note{font-size:.5rem;color:#1a0028;letter-spacing:.12em;text-align:center;line-height:1.7;padding:0 .6rem;}
 
+/* Suggest button */
+.suggest-wrap{text-align:center;margin-top:1rem;}
+#suggest-btn{
+  display:inline-block;
+  background:#0a0012;color:#cc44ff;
+  border:1px solid #440066;
+  font-family:'Share Tech Mono',monospace;font-size:.7rem;letter-spacing:.18em;
+  padding:.5rem 1.4rem;text-decoration:none;
+  transition:background .15s,border-color .15s,box-shadow .15s;
+}
+#suggest-btn:hover{background:#1a0028;border-color:#8800cc;box-shadow:0 0 14px #8800cc44;color:#ff44ff;}
+.suggest-note{font-size:.5rem;color:#2a0040;letter-spacing:.12em;margin-top:.4rem;}
+
 /* Footer */
 .hub-footer{
   margin-top:1.8rem;font-size:.5rem;letter-spacing:.2em;color:#180025;
@@ -238,6 +251,13 @@ body{display:flex;align-items:center;justify-content:center;font-family:'Share T
     <div class="footer-divider"></div>
     ARCANE GAMES — ALL TITLES PLAYABLE IN BROWSER
     <div class="footer-divider"></div>
+  </div>
+
+  <div class="suggest-wrap">
+    <a id="suggest-btn" href="https://docs.google.com/forms/d/e/1FAIpQLScwKOL8o-AF9CmnoL_gmXYZX3IS2aQPpKC42_h8dR1E7tY_bA/viewform?usp=publish-editor" target="_blank">
+      💡 SUGGEST A GAME
+    </a>
+    <div class="suggest-note">Got an idea? Let us know what to build next.</div>
   </div>
 </div>
 

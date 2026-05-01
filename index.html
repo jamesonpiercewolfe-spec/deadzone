@@ -204,6 +204,24 @@ body{display:flex;align-items:center;justify-content:center;font-family:'Share T
       </div>
     </div>
 
+    <!-- SUMO -->
+    <div class="game-card" onclick="launch('sumo')">
+      <div class="card-preview">
+        <canvas class="card-canvas" id="cv-sumo" width="190" height="132"></canvas>
+        <div class="card-badge badge-new">NEW</div>
+      </div>
+      <div class="card-body">
+        <div class="card-name">◉ SUMO</div>
+        <div class="card-desc">Push your opponent off the platform. 1P vs CPU or 2P local. First to 5 rounds wins.</div>
+        <div class="card-tags">
+          <span class="tag">2 PLAYER</span>
+          <span class="tag">VS CPU</span>
+          <span class="tag">ARENA</span>
+        </div>
+        <button class="card-play">▶ &nbsp;PLAY NOW</button>
+      </div>
+    </div>
+
     <!-- COMING SOON -->
     <div class="soon-card">
       <div class="soon-icon">◌</div>
@@ -406,7 +424,7 @@ function previewShift(){
 }
 
 // ── LAUNCH / LEAVE ──────────────────────────────────────────
-const GAMES = { deadzone:'zombie_shooter.html', shift:'shift.html', depth:'depth.html' };
+const GAMES = { deadzone:'zombie_shooter.html', shift:'shift.html', depth:'depth.html', sumo:'sumo.html' };
 let currentGame = null;
 
 function launch(id){
@@ -527,6 +545,60 @@ window.addEventListener('keydown',e=>{
 previewDeadzone();
 previewShift();
 previewDepth();
+(function previewSumo(){
+  const cv=document.getElementById('cv-sumo');
+  if(!cv)return;
+  const c=cv.getContext('2d');
+  const W=190,H=132,CX=W/2,CY=H/2+8,R=52;
+  let f=0;
+  (function frame(){
+    f++;
+    c.fillStyle='#0a0a0a';c.fillRect(0,0,W,H);
+    // Arena
+    const g=c.createRadialGradient(CX,CY,5,CX,CY,R);
+    g.addColorStop(0,'#2a2a2a');g.addColorStop(1,'#111');
+    c.fillStyle=g;c.beginPath();c.arc(CX,CY,R,0,Math.PI*2);c.fill();
+    // Edge ring
+    c.strokeStyle=`rgba(255,80,0,${0.4+Math.sin(f*.06)*.2})`;
+    c.lineWidth=2;c.beginPath();c.arc(CX,CY,R,0,Math.PI*2);c.stroke();
+    // Grid rings
+    c.strokeStyle='rgba(255,255,255,.04)';c.lineWidth=1;
+    [18,36].forEach(rr=>{c.beginPath();c.arc(CX,CY,rr,0,Math.PI*2);c.stroke();});
+    // Players
+    const t=f*.025;
+    const p1x=CX-20+Math.cos(t)*15,p1y=CY+Math.sin(t*1.2)*10;
+    const p2x=CX+20+Math.cos(t+Math.PI)*15,p2y=CY+Math.sin(t*1.2+Math.PI)*10;
+    // P1
+    const g1=c.createRadialGradient(p1x-4,p1y-4,1,p1x,p1y,14);
+    g1.addColorStop(0,'#ff6b6b');g1.addColorStop(1,'#c0392b');
+    c.fillStyle=g1;c.beginPath();c.arc(p1x,p1y,14,0,Math.PI*2);c.fill();
+    c.fillStyle='#fff';c.beginPath();c.ellipse(p1x-3,p1y-3,3,4,0,0,Math.PI*2);c.fill();
+    c.fillStyle='#fff';c.beginPath();c.ellipse(p1x+3,p1y-3,3,4,0,0,Math.PI*2);c.fill();
+    c.fillStyle='#111';c.beginPath();c.ellipse(p1x-3,p1y-3,1.5,2,0,0,Math.PI*2);c.fill();
+    c.fillStyle='#111';c.beginPath();c.ellipse(p1x+3,p1y-3,1.5,2,0,0,Math.PI*2);c.fill();
+    // P2
+    const g2=c.createRadialGradient(p2x-4,p2y-4,1,p2x,p2y,14);
+    g2.addColorStop(0,'#5dade2');g2.addColorStop(1,'#1a5276');
+    c.fillStyle=g2;c.beginPath();c.arc(p2x,p2y,14,0,Math.PI*2);c.fill();
+    c.fillStyle='#fff';c.beginPath();c.ellipse(p2x-3,p2y-3,3,4,0,0,Math.PI*2);c.fill();
+    c.fillStyle='#fff';c.beginPath();c.ellipse(p2x+3,p2y-3,3,4,0,0,Math.PI*2);c.fill();
+    c.fillStyle='#111';c.beginPath();c.ellipse(p2x-3,p2y-3,1.5,2,0,0,Math.PI*2);c.fill();
+    c.fillStyle='#111';c.beginPath();c.ellipse(p2x+3,p2y-3,1.5,2,0,0,Math.PI*2);c.fill();
+    // Labels
+    c.fillStyle='#e74c3c';c.font='7px monospace';c.textAlign='center';c.fillText('P1',p1x,p1y+20);
+    c.fillStyle='#3498db';c.fillText('P2',p2x,p2y+20);
+    // Score strip
+    c.fillStyle='rgba(0,0,0,.6)';c.fillRect(0,0,W,14);
+    c.fillStyle='#e74c3c';c.font='7px monospace';c.textAlign='left';c.fillText('P1: '+(Math.floor(f/120)%6),4,10);
+    c.fillStyle='#3498db';c.textAlign='right';c.fillText('P2: '+(Math.floor((f+60)/120)%6),W-4,10);
+    c.fillStyle='#333';c.textAlign='center';c.fillText('FIRST TO 5',W/2,10);
+    // Vignette
+    const vg=c.createRadialGradient(CX,CY,20,CX,CY,90);
+    vg.addColorStop(0,'rgba(0,0,0,0)');vg.addColorStop(1,'rgba(0,0,0,.75)');
+    c.fillStyle=vg;c.fillRect(0,0,W,H);
+    requestAnimationFrame(frame);
+  })();
+})();
 </script>
 </body>
 </html>

@@ -105,6 +105,8 @@ body{display:flex;align-items:center;justify-content:center;font-family:'Share T
 #suggest-btn:hover{background:#1a0028;border-color:#8800cc;box-shadow:0 0 14px #8800cc44;color:#ff44ff;}
 .suggest-note{font-size:.5rem;color:#2a0040;letter-spacing:.12em;margin-top:.4rem;}
 
+.section-label{font-size:.6rem;letter-spacing:.3em;color:#2a0040;margin-top:1.5rem;text-align:center;}
+
 /* Footer */
 .hub-footer{
   margin-top:1.8rem;font-size:.5rem;letter-spacing:.2em;color:#180025;
@@ -243,6 +245,82 @@ body{display:flex;align-items:center;justify-content:center;font-family:'Share T
         <div class="dot"></div><div class="dot"></div><div class="dot"></div>
       </div>
       <div class="soon-note">New games are<br>in development.<br>Check back soon.</div>
+    </div>
+
+  </div>
+
+  <!-- CLASSICS ROW -->
+  <div class="section-label">// CLASSIC ARCADE //</div>
+  <div class="cards" style="margin-top:0.8rem;">
+
+    <div class="game-card" onclick="launch('snake')">
+      <div class="card-preview"><canvas class="card-canvas" id="cv-snake" width="190" height="132"></canvas></div>
+      <div class="card-body">
+        <div class="card-name">🐍 SNAKE</div>
+        <div class="card-desc">Eat the food. Don't hit yourself. Classic.</div>
+        <div class="card-tags"><span class="tag">ARCADE</span><span class="tag">1P</span></div>
+        <button class="card-play">▶ &nbsp;PLAY NOW</button>
+      </div>
+    </div>
+
+    <div class="game-card" onclick="launch('tetris')">
+      <div class="card-preview"><canvas class="card-canvas" id="cv-tetris" width="190" height="132"></canvas></div>
+      <div class="card-body">
+        <div class="card-name">🧱 TETRIS</div>
+        <div class="card-desc">Stack blocks. Clear lines. Survive the speed.</div>
+        <div class="card-tags"><span class="tag">PUZZLE</span><span class="tag">1P</span></div>
+        <button class="card-play">▶ &nbsp;PLAY NOW</button>
+      </div>
+    </div>
+
+    <div class="game-card" onclick="launch('spaceinvaders')">
+      <div class="card-preview"><canvas class="card-canvas" id="cv-si" width="190" height="132"></canvas></div>
+      <div class="card-body">
+        <div class="card-name">👾 SPACE INVADERS</div>
+        <div class="card-desc">Defend Earth. Shoot the aliens before they land.</div>
+        <div class="card-tags"><span class="tag">SHOOTER</span><span class="tag">1P</span></div>
+        <button class="card-play">▶ &nbsp;PLAY NOW</button>
+      </div>
+    </div>
+
+    <div class="game-card" onclick="launch('pong')">
+      <div class="card-preview"><canvas class="card-canvas" id="cv-pong" width="190" height="132"></canvas></div>
+      <div class="card-body">
+        <div class="card-name">🏓 PONG</div>
+        <div class="card-desc">1P vs CPU or 2P local. First to 7 wins.</div>
+        <div class="card-tags"><span class="tag">2 PLAYER</span><span class="tag">VS CPU</span></div>
+        <button class="card-play">▶ &nbsp;PLAY NOW</button>
+      </div>
+    </div>
+
+    <div class="game-card" onclick="launch('minesweeper')">
+      <div class="card-preview"><canvas class="card-canvas" id="cv-mine" width="190" height="132"></canvas></div>
+      <div class="card-body">
+        <div class="card-name">💣 MINESWEEPER</div>
+        <div class="card-desc">Find all mines without triggering one. 3 difficulties.</div>
+        <div class="card-tags"><span class="tag">PUZZLE</span><span class="tag">1P</span></div>
+        <button class="card-play">▶ &nbsp;PLAY NOW</button>
+      </div>
+    </div>
+
+    <div class="game-card" onclick="launch('frogger')">
+      <div class="card-preview"><canvas class="card-canvas" id="cv-frog" width="190" height="132"></canvas></div>
+      <div class="card-body">
+        <div class="card-name">🐸 FROGGER</div>
+        <div class="card-desc">Cross the road and river. Don't get squished.</div>
+        <div class="card-tags"><span class="tag">ARCADE</span><span class="tag">1P</span></div>
+        <button class="card-play">▶ &nbsp;PLAY NOW</button>
+      </div>
+    </div>
+
+    <div class="game-card" onclick="launch('connect4')">
+      <div class="card-preview"><canvas class="card-canvas" id="cv-c4" width="190" height="132"></canvas></div>
+      <div class="card-body">
+        <div class="card-name">🔴 CONNECT FOUR</div>
+        <div class="card-desc">Drop pieces. Connect 4 in a row. Smart CPU opponent.</div>
+        <div class="card-tags"><span class="tag">STRATEGY</span><span class="tag">VS CPU</span></div>
+        <button class="card-play">▶ &nbsp;PLAY NOW</button>
+      </div>
     </div>
 
   </div>
@@ -444,7 +522,14 @@ function previewShift(){
 }
 
 // ── LAUNCH / LEAVE ──────────────────────────────────────────
-const GAMES = { deadzone:'zombie_shooter.html', shift:'shift.html', depth:'depth.html', sumo:'sumo.html' };
+const GAMES = { 
+  deadzone:'zombie_shooter.html', shift:'shift.html', 
+  depth:'depth.html', sumo:'sumo.html',
+  snake:'snake.html', tetris:'tetris.html',
+  spaceinvaders:'spaceinvaders.html', pong:'pong.html',
+  minesweeper:'minesweeper.html', frogger:'frogger.html',
+  connect4:'connect4.html'
+};
 let currentGame = null;
 
 function launch(id){
@@ -561,7 +646,29 @@ window.addEventListener('keydown',e=>{
   if(e.key==='F11'||e.key==='f'&&e.altKey){ e.preventDefault(); toggleFS(); }
 });
 
-// ── START PREVIEWS ──────────────────────────────────────────
+// ── CLASSIC PREVIEWS ────────────────────────────────────────
+(function(){
+  let f=0;
+  function animAll(){
+    f++;
+    // Snake
+    (function(){const cv=document.getElementById('cv-snake');if(!cv)return;const c=cv.getContext('2d');const W=190,H=132,CS=8;c.fillStyle='#050a05';c.fillRect(0,0,W,H);c.strokeStyle='rgba(57,255,20,0.06)';for(let x=0;x<W;x+=CS){c.beginPath();c.moveTo(x,0);c.lineTo(x,H);c.stroke();}for(let y=0;y<H;y+=CS){c.beginPath();c.moveTo(0,y);c.lineTo(W,y);c.stroke();}const snake=[];const len=12;const t=f*.04;for(let i=0;i<len;i++){snake.push({x:Math.floor((W/2+Math.cos(t+i*.4)*40)/CS)*CS,y:Math.floor((H/2+Math.sin(t+i*.35)*25)/CS)*CS});}snake.forEach((s,i)=>{const g=Math.floor(255*(1-i/len*.5));c.fillStyle=`rgb(0,${g},0)`;c.shadowBlur=i===0?8:0;c.shadowColor='#39ff14';c.fillRect(s.x+1,s.y+1,CS-2,CS-2);});c.shadowBlur=0;const fx=Math.floor((W/2+Math.cos(t+2)*60)/CS)*CS,fy=Math.floor((H/2+Math.sin(t+1.5)*35)/CS)*CS;c.fillStyle='#ff3300';c.shadowBlur=6;c.shadowColor='#ff3300';c.fillRect(fx+1,fy+1,CS-2,CS-2);c.shadowBlur=0;c.fillStyle='rgba(0,0,0,.6)';c.fillRect(0,0,W,12);c.fillStyle='#39ff14';c.font='7px monospace';c.textAlign='left';c.fillText('SCORE: '+(f*2%200),4,9);})();
+    // Tetris
+    (function(){const cv=document.getElementById('cv-tetris');if(!cv)return;const c=cv.getContext('2d');const W=190,H=132,CS=10;c.fillStyle='#050508';c.fillRect(0,0,W,H);const cols=['#00ffff','#ffff00','#aa00ff','#ff8800','#0044ff','#00ff44','#ff2200'];const board=[];for(let r=0;r<8;r++){board.push([]);for(let cc=0;cc<9;cc++){board[r].push(Math.random()<.5?cols[Math.floor(Math.random()*cols.length)]:null);}}const ox=W/2-4.5*CS,oy=20;board.forEach((row,r)=>row.forEach((col,cc)=>{if(!col)return;c.fillStyle=col;c.fillRect(ox+cc*CS+1,oy+r*CS+1,CS-2,CS-2);c.fillStyle='rgba(255,255,255,0.25)';c.fillRect(ox+cc*CS+1,oy+r*CS+1,CS-2,3);}));c.strokeStyle='#2222aa';c.lineWidth=1;c.strokeRect(ox-1,oy-1,9*CS+2,8*CS+2);c.fillStyle='rgba(0,0,0,.6)';c.fillRect(0,0,W,12);c.fillStyle='#aaaaff';c.font='7px monospace';c.textAlign='center';c.fillText('TETRIS',W/2,9);})();
+    // Space Invaders
+    (function(){const cv=document.getElementById('cv-si');if(!cv)return;const c=cv.getContext('2d');c.fillStyle='#000';c.fillRect(0,0,190,132);for(let i=0;i<30;i++){c.fillStyle='rgba(255,255,255,.3)';c.fillRect((i*97)%190,(i*53+f*.2)%132,1,1);}const cols=['#ff2200','#ff8800','#00ff44'];for(let r=0;r<3;r++)for(let cc=0;cc<6;cc++){c.fillStyle=cols[r];c.shadowBlur=4;c.shadowColor=cols[r];c.fillRect(20+cc*28,20+r*22,20,14);}c.shadowBlur=0;c.fillStyle='#39ff14';c.fillRect(85,110,20,8);c.fillRect(89,104,12,7);c.fillRect(91,101,8,4);c.fillStyle='#fff';c.fillRect(87+(f%60<30?2:0),88,4,10);c.fillStyle='rgba(0,0,0,.6)';c.fillRect(0,0,190,12);c.fillStyle='#39ff14';c.font='7px monospace';c.textAlign='left';c.fillText('SCORE: '+(f*5%1000),4,9);c.fillStyle='#ff4444';c.textAlign='right';c.fillText('♥♥♥',186,9);})();
+    // Pong
+    (function(){const cv=document.getElementById('cv-pong');if(!cv)return;const c=cv.getContext('2d');c.fillStyle='#050505';c.fillRect(0,0,190,132);c.strokeStyle='rgba(255,255,255,.08)';c.setLineDash([6,6]);c.beginPath();c.moveTo(95,0);c.lineTo(95,132);c.stroke();c.setLineDash([]);const t=f*.02;const by2=66+Math.sin(t*1.3)*40;const bx2=95+Math.cos(t)*60;c.fillStyle='#e74c3c';c.shadowBlur=8;c.shadowColor='#e74c3c';c.fillRect(8,Math.max(4,Math.min(112,by2-20)),10,40);c.fillStyle='#3498db';c.shadowColor='#3498db';c.fillRect(172,Math.max(4,Math.min(112,by2-15)),10,40);c.fillStyle='#fff';c.shadowColor='#fff';c.beginPath();c.arc(bx2,by2,6,0,Math.PI*2);c.fill();c.shadowBlur=0;c.fillStyle='rgba(255,255,255,.06)';c.font='bold 40px monospace';c.textAlign='center';c.fillText('2',60,85);c.fillText('3',130,85);c.fillStyle='rgba(0,0,0,.6)';c.fillRect(0,0,190,12);c.fillStyle='#fff';c.font='7px monospace';c.textAlign='center';c.fillText('PONG',95,9);})();
+    // Minesweeper
+    (function(){const cv=document.getElementById('cv-mine');if(!cv)return;const c=cv.getContext('2d');c.fillStyle='#111';c.fillRect(0,0,190,132);const CS2=14,cols2=12,rows2=8,ox=7,oy=14;for(let r=0;r<rows2;r++)for(let cc=0;cc<cols2;cc++){const revealed=Math.random()<.5;c.fillStyle=revealed?'#1a1a1a':'#2a2a2a';c.fillRect(ox+cc*CS2,oy+r*CS2,CS2-1,CS2-1);if(revealed&&Math.random()<.3){const n=Math.floor(Math.random()*4)+1;c.fillStyle=['','#1a44cc','#1a8a1a','#cc2200','#660088'][n];c.font='8px monospace';c.textAlign='center';c.fillText(n,ox+cc*CS2+CS2/2,oy+r*CS2+CS2*.7);}if(!revealed&&Math.random()<.08){c.fillStyle='#ff4488';c.font='8px monospace';c.textAlign='center';c.fillText('🚩',ox+cc*CS2+CS2/2,oy+r*CS2+CS2*.7);}}c.fillStyle='rgba(0,0,0,.6)';c.fillRect(0,0,190,12);c.fillStyle='#ff4488';c.font='7px monospace';c.textAlign='left';c.fillText('💣 MINESWEEPER',4,9);})();
+    // Frogger
+    (function(){const cv=document.getElementById('cv-frog');if(!cv)return;const c=cv.getContext('2d');c.fillStyle='#0a100a';c.fillRect(0,0,190,132);[0,1,2,3].forEach(i=>{c.fillStyle=i%2===0?'#1a0a08':'#140a06';c.fillRect(0,20+i*22,190,22);});[0,1,2].forEach(i=>{c.fillStyle='#08181a';c.fillRect(0,110-i*22,190,22);});const cx=(f*1.5+30)%220-30;c.fillStyle='#cc2200';c.fillRect(cx,26,50,14);c.fillStyle='#ffff44';c.beginPath();c.arc(cx+8,33,3,0,Math.PI*2);c.fill();c.beginPath();c.arc(cx+42,33,3,0,Math.PI*2);c.fill();const lx=190-(f*.8)%240;c.fillStyle='#4a3010';c.fillRect(lx,94,70,10);c.fillStyle='#2aaa2a';c.fillRect(88,116,14,14);c.fillStyle='#fff';c.fillRect(90,117,4,4);c.fillRect(97,117,4,4);c.fillStyle='rgba(0,0,0,.6)';c.fillRect(0,0,190,12);c.fillStyle='#39ff14';c.font='7px monospace';c.textAlign='center';c.fillText('🐸 FROGGER',95,9);})();
+    // Connect 4
+    (function(){const cv=document.getElementById('cv-c4');if(!cv)return;const c=cv.getContext('2d');c.fillStyle='#050508';c.fillRect(0,0,190,132);c.fillStyle='#001a44';c.fillRect(18,18,154,108);const CS3=22,ox=18,oy=18;for(let r=0;r<4;r++)for(let cc=0;cc<7;cc++){const x=ox+cc*CS3+CS3/2,y=oy+r*CS3+CS3/2;const v=Math.random()<.35?1:Math.random()<.4?2:0;c.fillStyle=v===1?'#c0392b':v===2?'#b8a000':'#000820';c.beginPath();c.arc(x,y,CS3/2-3,0,Math.PI*2);c.fill();if(v){c.fillStyle=v===1?'rgba(255,100,100,.25)':'rgba(255,255,100,.25)';c.beginPath();c.arc(x-3,y-3,CS3/2-6,0,Math.PI*2);c.fill();}}c.strokeStyle='#002266';c.lineWidth=1;c.strokeRect(18,18,154,108);c.fillStyle='rgba(0,0,0,.6)';c.fillRect(0,0,190,12);c.fillStyle='#ffcc00';c.font='7px monospace';c.textAlign='center';c.fillText('CONNECT FOUR',95,9);})();
+    requestAnimationFrame(animAll);
+  }
+  animAll();
+})();
 previewDeadzone();
 previewShift();
 previewDepth();
